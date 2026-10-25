@@ -159,9 +159,52 @@ public class DirectedGraphAlgorithms implements IDirectedGraphAlgorithms {
         return new FloydWarshallResult<>(vertices, costos, siguientes);
     }
 
+    /**
+     * Cierre transitivo dirigido de Warshall, O(V^3) tiempo y O(V^2) espacio.
+     * El contrato compartido con Floyd permite consultar caminos y costos:
+     * aqui el costo representa cantidad minima de aristas (saltos), no pesos.
+     * La alcanzabilidad incluye el camino de longitud cero de cada vertice.
+     */
     @Override
     public <V, D extends WeightedEdge> IFloydWarshallResult<V> warshall(IDirectedIGraph<V, D> grafo) {
-        throw new UnsupportedOperationException("Pendiente");
+        List<V> vertices = new ArrayList<>(grafo.vertices());
+        int cantidad = vertices.size();
+        Map<V, Integer> indices = new HashMap<>();
+        double[][] saltos = new double[cantidad][cantidad];
+        int[][] siguientes = new int[cantidad][cantidad];
+        for (int i = 0; i < cantidad; i++) {
+            indices.put(vertices.get(i), i);
+            Arrays.fill(saltos[i], Double.POSITIVE_INFINITY);
+            Arrays.fill(siguientes[i], -1);
+            saltos[i][i] = 0;
+            siguientes[i][i] = i;
+        }
+        for (Edge<V, D> arista : grafo.aristas()) {
+            int origen = indices.get(arista.source());
+            int destino = indices.get(arista.target());
+            if (saltos[origen][destino] > 1) {
+                saltos[origen][destino] = 1;
+                siguientes[origen][destino] = destino;
+            }
+        }
+        for (int k = 0; k < cantidad; k++) {
+            for (int i = 0; i < cantidad; i++) {
+                if (siguientes[i][k] == -1) {
+                    continue;
+                }
+                for (int j = 0; j < cantidad; j++) {
+                    if (siguientes[k][j] == -1) {
+                        continue;
+                    }
+                    double nuevoCosto = saltos[i][k] + saltos[k][j];
+                    if (nuevoCosto < saltos[i][j]) {
+                        saltos[i][j] = nuevoCosto;
+                        siguientes[i][j] = siguientes[i][k];
+                    }
+                }
+            }
+        }
+        return new FloydWarshallResult<>(vertices, saltos, siguientes);
     }
 
     @Override
