@@ -1,5 +1,6 @@
 package ucu.edu.aed.tda.grafo.impl;
 
+import ucu.edu.aed.tda.grafo.IDirectedIGraph;
 import ucu.edu.aed.tda.grafo.IUndirectedGraph;
 import ucu.edu.aed.tda.grafo.IUndirectedGraphAlgorithm;
 import ucu.edu.aed.tda.grafo.model.edge.Edge;
@@ -126,5 +127,54 @@ public class UndirectedGraphAlgorithms implements IUndirectedGraphAlgorithm {
                 }
             }
         }
+    }
+
+    public <V, D> Set<V> puntosDeArticulacion(IUndirectedGraph<V, D> graph) {
+        Set<V> articulaciones = new LinkedHashSet<>();
+        Map<V, Integer> descubrimiento = new HashMap<>();
+        Map<V, Integer> low = new HashMap<>();
+        int[] contador = {0};
+        for (V raiz : graph.vertices()) {
+            if (!descubrimiento.containsKey(raiz)) {
+                articulacionesAux(graph, raiz, null, descubrimiento, low, contador, articulaciones);
+            }
+        }
+        return articulaciones;
+    }
+
+    private <V, D> void articulacionesAux(IUndirectedGraph<V, D> graph, V u, V padre,
+                                          Map<V, Integer> descubrimiento, Map<V, Integer> low,
+                                          int[] contador, Set<V> articulaciones) {
+        contador[0]++;
+        descubrimiento.put(u, contador[0]);
+        low.put(u, contador[0]);
+        int hijos = 0;
+
+        for (Edge<V, D> e : graph.adyacencias(graph.construirComparable(u))) {
+            V v = e.target();
+            if (!descubrimiento.containsKey(v)) {
+                hijos++;
+                articulacionesAux(graph, v, u, descubrimiento, low, contador, articulaciones);
+                low.put(u, Math.min(low.get(u), low.get(v)));
+                if (padre != null && low.get(v) >= descubrimiento.get(u)) {
+                    articulaciones.add(u);
+                }
+            } else if (!v.equals(padre)) {
+                low.put(u, Math.min(low.get(u), descubrimiento.get(v)));
+            }
+        }
+
+        if (padre == null && hijos >= 2) {
+            articulaciones.add(u);
+        }
+    }
+
+    public <V, D> UndirectedGraph<V, D> proyeccionNoDirigida(IDirectedIGraph<V, D> dirigido) {
+        UndirectedGraph<V, D> proyeccion = new UndirectedGraph<>();
+        proyeccion.agregarVertices(dirigido.vertices());
+        for (Edge<V, D> e : dirigido.aristas()) {
+            proyeccion.agregarArista(e.source(), e.target(), e.dato());
+        }
+        return proyeccion;
     }
 }
