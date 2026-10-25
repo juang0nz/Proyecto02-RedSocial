@@ -1,0 +1,26 @@
+name: Pruebas Java
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Obtener codigo
+        uses: actions/checkout@v4
+      - name: Configurar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: Proyecto/pom.xml
+      - name: Compilar y ejecutar pruebas
+        run: mvn -B -ntp -f Proyecto/pom.xml clean test
