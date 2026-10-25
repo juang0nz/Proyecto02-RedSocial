@@ -11,6 +11,8 @@ import ucu.edu.aed.tda.grafo.model.result.Path;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -197,34 +199,98 @@ public class DirectedGraphAlgorithms implements IDirectedGraphAlgorithms {
         return maximo;
     }
 
+    /**
+     * DFS iterativo desde el origen, respetando el orden de adyacencias.
+     * Complejidad O(V + E) en la componente alcanzable.
+     */
     @Override
     public <V, D> void recorridoEnProfundidad(IGraph<V, D> grafo, Comparable<V> sourceCriteria, Consumer<V> consumer) {
-        throw new UnsupportedOperationException("Pendiente");
+        V origen = grafo.buscarVertice(sourceCriteria);
+        if (origen == null) {
+            throw new IllegalArgumentException("El vertice de origen no pertenece al grafo");
+        }
+        java.util.Objects.requireNonNull(consumer, "consumer");
+        Set<V> visitados = new HashSet<>();
+        Deque<V> pendientes = new ArrayDeque<>();
+        pendientes.push(origen);
+        while (!pendientes.isEmpty()) {
+            V actual = pendientes.pop();
+            if (!visitados.add(actual)) {
+                continue;
+            }
+            consumer.accept(actual);
+            List<Edge<V, D>> adyacentes = new ArrayList<>(grafo.adyacencias(grafo.construirComparable(actual)));
+            for (int i = adyacentes.size() - 1; i >= 0; i--) {
+                V vecino = adyacentes.get(i).target();
+                if (!visitados.contains(vecino)) {
+                    pendientes.push(vecino);
+                }
+            }
+        }
     }
 
+    /**
+     * BFS desde el origen, respetando el orden de adyacencias.
+     * Complejidad O(V + E) en la componente alcanzable.
+     */
     @Override
     public <V, D> void recorridoEnAmplitud(IGraph<V, D> grafo, Comparable<V> sourceCriteria, Consumer<V> consumer) {
-        throw new UnsupportedOperationException("Pendiente");
+        V origen = grafo.buscarVertice(sourceCriteria);
+        if (origen == null) {
+            throw new IllegalArgumentException("El vertice de origen no pertenece al grafo");
+        }
+        java.util.Objects.requireNonNull(consumer, "consumer");
+        Set<V> visitados = new HashSet<>();
+        Deque<V> pendientes = new ArrayDeque<>();
+        visitados.add(origen);
+        pendientes.addLast(origen);
+        while (!pendientes.isEmpty()) {
+            V actual = pendientes.removeFirst();
+            consumer.accept(actual);
+            for (Edge<V, D> arista : grafo.adyacencias(grafo.construirComparable(actual))) {
+                if (visitados.add(arista.target())) {
+                    pendientes.addLast(arista.target());
+                }
+            }
+        }
     }
 
+    /**
+     * Orden topologico de Kahn. Rechaza grafos dirigidos con ciclos.
+     * Complejidad O(V + E).
+     */
     @Override
     public <V, D> List<V> calcularClasificacionTopologica(IDirectedIGraph<V, D> grafo) {
-        Set<V> visitados = new HashSet<>();
-        LinkedList<V> listaNodos = new LinkedList<>();
+        Map<V, Integer> entradas = new LinkedHashMap<>();
         for (V vertice : grafo.vertices()) {
-            clasificacionTopologicaAux(grafo, vertice, visitados, listaNodos);
+            entradas.put(vertice, 0);
         }
-        return listaNodos;
-    }
-
-    private <V, D> void clasificacionTopologicaAux(IDirectedIGraph<V, D> grafo, V nodo, Set<V> visitados, LinkedList<V> lista) {
-        if (!visitados.contains(nodo)) {
-            visitados.add(nodo);
-            for (Edge<V, D> arista : grafo.adyacencias(grafo.construirComparable(nodo))) {
-                clasificacionTopologicaAux(grafo, arista.target(), visitados, lista);
+        for (Edge<V, D> arista : grafo.aristas()) {
+            entradas.put(arista.target(), entradas.get(arista.target()) + 1);
+        }
+        Deque<V> pendientes = new ArrayDeque<>();
+        for (Map.Entry<V, Integer> entrada : entradas.entrySet()) {
+            if (entrada.getValue() == 0) {
+                pendientes.addLast(entrada.getKey());
             }
-            lista.addFirst(nodo);
         }
+        List<V> orden = new ArrayList<>();
+        while (!pendientes.isEmpty()) {
+            V actual = pendientes.removeFirst();
+            orden.add(actual);
+            for (Edge<V, D> arista : grafo.adyacencias(grafo.construirComparable(actual))) {
+                V destino = arista.target();
+                int restante = entradas.get(destino) - 1;
+                entradas.put(destino, restante);
+                if (restante == 0) {
+                    pendientes.addLast(destino);
+                }
+            }
+        }
+        if (orden.size() != entradas.size()) {
+            throw new IllegalArgumentException("No existe orden topologico: el grafo contiene ciclos");
+        }
+        return List.copyOf(orden);
     }
 
     public <V, D extends WeightedEdge> List<Path<V>> caminoCritico(IDirectedIGraph<V, D> grafo) {
