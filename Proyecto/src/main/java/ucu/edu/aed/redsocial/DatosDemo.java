@@ -1,8 +1,11 @@
 package ucu.edu.aed.redsocial;
 
+import ucu.edu.aed.redsocial.modelo.EntradaFeed;
+import ucu.edu.aed.redsocial.modelo.Posteo;
 import ucu.edu.aed.redsocial.modelo.Usuario;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.stream.Collectors;
 
 /**
@@ -26,6 +29,17 @@ import java.util.stream.Collectors;
  *   dirigida, ana, ivan y elena son puntos de articulación.
  * - Aislado: julia.
  * - Distancia larga: diego llega a facundo en 4 saltos (diego, ana, ivan, elena, facundo).
+ *
+ * Publicaciones (en este orden):
+ *  p1  carla publica mencionando a @gabriela, que es de la otra comunidad y no la sigue.
+ *      gabriela lo comparte -> llega a sus seguidores (facundo, hernan).   <- caso de la consigna
+ *      bruno lo comparte -> llega a ana y diego.
+ *      facundo comenta (le llegó por gabriela).
+ *  p2  elena publica. ivan lo comparte -> llega a ana; ana lo comparte -> llega a bruno, carla
+ *      y diego (el ciclo ana <-> ivan no lo repite). diego comenta arrobando a @julia, que está
+ *      aislada y lo recibe por la mención. hernan no lo recibe: sigue a gabriela y facundo,
+ *      que lo recibieron pero no lo compartieron.
+ *  p3  julia publica: nadie la sigue, alcance vacío.
  */
 public final class DatosDemo {
 
@@ -35,12 +49,14 @@ public final class DatosDemo {
     /** Cantidad de usuarios y de seguimientos que genera crearRedDemo(). */
     public static final int USUARIOS = 10;
     public static final int SEGUIMIENTOS = 18;
+    public static final int POSTEOS = 3;
 
     /** Crea una red nueva con el dataset de ejemplo. */
     public static RedSocial crearRedDemo() {
         RedSocial red = new RedSocial();
         cargarUsuarios(red);
         cargarSeguimientos(red);
+        cargarPublicaciones(red);
         return red;
     }
 
@@ -81,6 +97,23 @@ public final class DatosDemo {
         red.seguir("hernan", "facundo");
     }
 
+    private static void cargarPublicaciones(RedSocial red) {
+        // p1: mención a alguien de otra comunidad que después comparte
+        red.publicar("carla", "Alguien tiene los ejercicios de grafos? @gabriela vos hiciste el curso");
+        red.compartir("p1", "gabriela");
+        red.compartir("p1", "bruno");
+        red.comentar("p1", "facundo", "Yo tambien los quiero");
+
+        // p2: cadena de compartidos con ciclo y mención en un comentario
+        red.publicar("elena", "Ensayo abierto el sabado, estan todos invitados");
+        red.compartir("p2", "ivan");
+        red.compartir("p2", "ana");
+        red.comentar("p2", "diego", "@julia te va a gustar");
+
+        // p3: usuaria aislada
+        red.publicar("julia", "Hola, recien llego a la red");
+    }
+
     private static void mutuo(RedSocial red, String a, String b) {
         red.seguir(a, b);
         red.seguir(b, a);
@@ -97,6 +130,22 @@ public final class DatosDemo {
                     ids(red.seguidos(u.getId())),
                     ids(red.seguidores(u.getId())),
                     ids(red.seguidoresMutuos(u.getId())));
+        }
+
+        System.out.println();
+        System.out.println("Posteos: " + red.cantidadDePosteos());
+        for (Posteo p : red.posteos()) {
+            System.out.println(p);
+            System.out.println("    compartido por: " + ids(red.compartidoPor(p.getId())));
+            System.out.println("    mencionados:    " + ids(red.mencionados(p.getId())));
+            System.out.println("    alcance:        " + ids(red.alcance(p.getId())));
+        }
+
+        System.out.println();
+        System.out.println("Feeds:");
+        for (Usuario u : red.usuarios()) {
+            List<EntradaFeed> feed = red.feed(u.getId());
+            System.out.printf("%-10s %s%n", u, feed.isEmpty() ? "-" : feed);
         }
     }
 

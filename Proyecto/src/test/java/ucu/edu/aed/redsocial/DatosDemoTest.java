@@ -1,10 +1,13 @@
 package ucu.edu.aed.redsocial;
 
 import junit.framework.TestCase;
+import ucu.edu.aed.redsocial.modelo.EntradaFeed;
+import ucu.edu.aed.redsocial.modelo.Posteo;
 import ucu.edu.aed.redsocial.modelo.Usuario;
 import ucu.edu.aed.tda.grafo.IDirectedIGraph;
 import ucu.edu.aed.tda.grafo.model.edge.WeightedEdge;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -22,7 +25,11 @@ public class DatosDemoTest extends TestCase {
         red = DatosDemo.crearRedDemo();
     }
 
-    private static List<String> ids(Set<Usuario> usuarios) {
+    private static List<String> posteosDelFeed(List<EntradaFeed> feed) {
+        return feed.stream().map(e -> e.getPosteo().getId()).collect(Collectors.toList());
+    }
+
+    private static List<String> ids(Collection<Usuario> usuarios) {
         return usuarios.stream().map(Usuario::getId).collect(Collectors.toList());
     }
 
@@ -87,5 +94,58 @@ public class DatosDemoTest extends TestCase {
         RedSocial sinJulia = DatosDemo.crearRedDemo();
         sinJulia.eliminarUsuario("julia");
         assertTrue(sinJulia.grafoDeSeguimiento().esConexo());
+    }
+
+    // ------------------------------------------------------------ publicaciones
+
+    public void testCantidadDePublicaciones() {
+        assertEquals(DatosDemo.POSTEOS, red.cantidadDePosteos());
+        assertEquals(List.of("gabriela", "bruno"), ids(red.compartidoPor("p1")));
+        assertEquals(List.of("ivan", "ana"), ids(red.compartidoPor("p2")));
+        assertEquals(1, red.comentarios("p1").size());
+        assertEquals(1, red.comentarios("p2").size());
+    }
+
+    public void testCasoConsignaMencionadaDeOtraComunidadComparte() {
+        assertFalse("gabriela no sigue a carla", red.sigueA("gabriela", "carla"));
+        assertEquals(List.of("gabriela"), ids(red.mencionados("p1")));
+        assertEquals(List.of("gabriela", "bruno", "facundo", "hernan", "ana", "diego"),
+                ids(red.alcance("p1")));
+        EntradaFeed deHernan = red.feed("hernan").get(0);
+        assertEquals("p1", deHernan.getPosteo().getId());
+        assertEquals(EntradaFeed.Motivo.COMPARTIDO, deHernan.getMotivo());
+        assertEquals("gabriela", deHernan.getVia().getId());
+    }
+
+    public void testCadenaConCicloYMencionEnComentario() {
+        assertEquals(List.of("julia", "ivan", "facundo", "gabriela", "ana", "bruno", "carla", "diego"),
+                ids(red.alcance("p2")));
+        assertFalse("hernan sigue a quienes lo recibieron, pero no lo compartieron",
+                red.alcance("p2").contains(red.obtenerUsuario("hernan")));
+        EntradaFeed deJulia = red.feed("julia").get(0);
+        assertEquals(EntradaFeed.Motivo.MENCION, deJulia.getMotivo());
+        assertEquals("diego", deJulia.getVia().getId());
+    }
+
+    public void testPosteoDeUsuariaAisladaNoLlegaANadie() {
+        assertTrue(red.alcance("p3").isEmpty());
+    }
+
+    public void testFeedsEsperados() {
+        assertEquals(List.of("p2", "p1"), posteosDelFeed(red.feed("ana")));
+        assertEquals(List.of("p2"), posteosDelFeed(red.feed("carla")));
+        assertEquals(List.of("p1"), posteosDelFeed(red.feed("hernan")));
+        assertEquals(List.of("p2"), posteosDelFeed(red.feed("julia")));
+        assertTrue(red.feed("elena").isEmpty());
+    }
+
+    public void testFeedYAlcanceCoincidenEnTodaLaRed() {
+        for (Usuario u : red.usuarios()) {
+            List<String> feed = posteosDelFeed(red.feed(u.getId()));
+            for (Posteo p : red.posteos()) {
+                assertEquals(u + " / " + p.getId(),
+                        red.alcance(p.getId()).contains(u), feed.contains(p.getId()));
+            }
+        }
     }
 }
