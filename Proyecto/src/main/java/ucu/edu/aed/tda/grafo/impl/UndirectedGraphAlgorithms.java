@@ -16,6 +16,7 @@ import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.function.Consumer;
 
@@ -30,24 +31,57 @@ public class UndirectedGraphAlgorithms implements IUndirectedGraphAlgorithm {
         }
         arbol.agregarVertices(graph.vertices());
 
-        Set<V> visitados = new LinkedHashSet<>();
-        Set<V> pendientes = new LinkedHashSet<>(graph.vertices());
-        visitados.add(inicio);
-        pendientes.remove(inicio);
+        Map<V, List<Edge<V, D>>> vecinos = new HashMap<>();
+        for (V v : graph.vertices()) {
+            vecinos.put(v, new ArrayList<>());
+        }
+        for (Edge<V, D> e : graph.aristas()) {
+            vecinos.get(e.source()).add(e);
+            vecinos.get(e.target()).add(e);
+        }
 
-        while (!pendientes.isEmpty()) {
-            Edge<V, D> minima = searchMinEdge(graph, visitados, pendientes);
-            V nuevo;
-            if (minima == null) {
-                nuevo = pendientes.iterator().next();
-            } else {
-                arbol.agregarArista(minima.source(), minima.target(), minima.dato());
-                nuevo = minima.target();
+        Set<V> visitados = new HashSet<>();
+        PriorityQueue<Edge<V, D>> cola = new PriorityQueue<>(
+                Comparator.comparingDouble(e -> e.dato().getWeight()));
+
+        List<V> ordenDeArranque = new ArrayList<>();
+        ordenDeArranque.add(inicio);
+        ordenDeArranque.addAll(graph.vertices());
+
+        for (V raiz : ordenDeArranque) {
+            if (visitados.contains(raiz)) {
+                continue;
             }
-            visitados.add(nuevo);
-            pendientes.remove(nuevo);
+            visitar(raiz, vecinos, visitados, cola);
+            while (!cola.isEmpty()) {
+                Edge<V, D> minima = cola.poll();
+                V nuevo;
+                V desde;
+                if (!visitados.contains(minima.target())) {
+                    nuevo = minima.target();
+                    desde = minima.source();
+                } else if (!visitados.contains(minima.source())) {
+                    nuevo = minima.source();
+                    desde = minima.target();
+                } else {
+                    continue;
+                }
+                arbol.agregarArista(desde, nuevo, minima.dato());
+                visitar(nuevo, vecinos, visitados, cola);
+            }
         }
         return arbol;
+    }
+
+    private <V, D> void visitar(V v, Map<V, List<Edge<V, D>>> vecinos, Set<V> visitados,
+                                PriorityQueue<Edge<V, D>> cola) {
+        visitados.add(v);
+        for (Edge<V, D> e : vecinos.get(v)) {
+            V otro = e.source().equals(v) ? e.target() : e.source();
+            if (!visitados.contains(otro)) {
+                cola.add(e);
+            }
+        }
     }
 
     @Override
