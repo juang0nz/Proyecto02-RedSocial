@@ -8,6 +8,7 @@ import ucu.edu.aed.tda.grafo.model.result.IFloydWarshallResult;
 import java.util.List;
 import java.util.Map;
 
+// Pruebas del requisito de Dijkstra: costos mínimos, rutas y validación de entradas.
 public class DijkstraTest extends TestCase {
 
     private final DirectedGraphAlgorithms algoritmos = new DirectedGraphAlgorithms();
@@ -33,6 +34,7 @@ public class DijkstraTest extends TestCase {
         return grafo;
     }
 
+    // Usa costos y rutas esperados para comprobar el resultado, incluidos los predecesores.
     public void testEjercicio7DesdeB() {
         DirectedGraph<String, WeightedEdge> grafo = crearGrafo();
         assertEquals(5, grafo.cantidadDeVertices());
@@ -53,6 +55,7 @@ public class DijkstraTest extends TestCase {
                 DijkstraResult.reconstruirCamino("B", "E", resultado.getPredecessors()));
     }
 
+    // Contrasta Dijkstra con Floyd para cada origen y suma los pesos de las rutas obtenidas.
     public void testTodosLosOrigenesCoincidenConFloyd() {
         DirectedGraph<String, WeightedEdge> grafo = crearGrafo();
         IFloydWarshallResult<String> floyd = algoritmos.floyd(grafo);
@@ -70,6 +73,8 @@ public class DijkstraTest extends TestCase {
         }
     }
 
+    // Contempla peso cero, ciclo de costo cero y un aislado que debe quedar inalcanzable.
+    // También verifica que el resultado no dependa de cambios posteriores en el grafo.
     public void testPesosCeroDesconexionYEjemploInmutable() {
         DirectedGraph<String, WeightedEdge> grafo = new DirectedGraph<>();
         grafo.agregarVertices(List.of("A", "B", "C", "D"));
@@ -96,6 +101,7 @@ public class DijkstraTest extends TestCase {
         }
     }
 
+    // La validación revisa incluso aristas que no se alcanzan desde el origen.
     public void testRechazaPesosInvalidosInclusoEnComponenteInaccesible() {
         for (double peso : new double[]{-1, Double.NaN, Double.POSITIVE_INFINITY}) {
             DirectedGraph<String, WeightedEdge> grafo = new DirectedGraph<>();
@@ -110,6 +116,7 @@ public class DijkstraTest extends TestCase {
         }
     }
 
+    // Comprueba el origen inexistente y evita reconstruir para siempre un mapa con ciclos.
     public void testOrigenInexistenteYVectorCiclico() {
         DirectedGraph<String, WeightedEdge> grafo = crearGrafo();
         try {

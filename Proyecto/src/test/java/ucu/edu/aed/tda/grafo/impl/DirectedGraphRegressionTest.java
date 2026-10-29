@@ -9,6 +9,8 @@ import ucu.edu.aed.tda.grafo.model.result.Path;
 import java.util.HashSet;
 import java.util.List;
 
+// Comprueba los requisitos de Floyd, todos los caminos, centro y excentricidad con un grafo de ciudades.
+// Los resultados esperados ayudan a detectar cambios que alteren el funcionamiento de la biblioteca.
 public class DirectedGraphRegressionTest extends TestCase {
 
     private static final List<String> VERTICES = List.of("Asuncion", "Buenos_Aires", "Curitiba", "Montevideo",
@@ -42,6 +44,7 @@ public class DirectedGraphRegressionTest extends TestCase {
         return grafo;
     }
 
+    // Compara cada costo con una matriz esperada, no solamente con otro algoritmo.
     public void testMatrizFloydParaLos64Pares() {
         IFloydWarshallResult<String> resultado = algoritmos.floyd(crearGrafo());
         double inf = Double.POSITIVE_INFINITY;
@@ -63,6 +66,8 @@ public class DirectedGraphRegressionTest extends TestCase {
         }
     }
 
+    // Contrasta Floyd con el mínimo de todos los caminos simples para cada par.
+    // Además verifica que cada ruta use aristas reales y no repita vértices.
     public void testFloydCoincideConEnumeracionDeCaminosParaLos64Pares() {
         DirectedGraph<String, WeightedEdge> grafo = crearGrafo();
         IFloydWarshallResult<String> resultado = algoritmos.floyd(grafo);
@@ -87,6 +92,7 @@ public class DirectedGraphRegressionTest extends TestCase {
         }
     }
 
+    // Recorre la ruta devuelta y suma sus pesos para comprobar el costo informado.
     private void verificarCamino(DirectedGraph<String, WeightedEdge> grafo, String origen, String destino,
                                  List<String> itinerario, double costoEsperado) {
         assertFalse(itinerario.isEmpty());
@@ -101,6 +107,7 @@ public class DirectedGraphRegressionTest extends TestCase {
         assertEquals(costoEsperado, costo, 0);
     }
 
+    // Conserva dos rutas concretas con sus costos y vértices intermedios esperados.
     public void testRutasMinimasHistoricas() {
         IFloydWarshallResult<String> resultado = algoritmos.floyd(crearGrafo());
         assertEquals(1580.0, resultado.getCost("Montevideo", "Curitiba"), 0);
@@ -111,6 +118,8 @@ public class DirectedGraphRegressionTest extends TestCase {
                 resultado.getPath("Montevideo", "Rio_de_Janeiro"));
     }
 
+    // Porto Alegre recibe caminos desde todos, aunque no tenga salidas.
+    // Por eso puede ser centro cuando se usa excentricidad de entrada.
     public void testCentroYExcentricidadDeEntrada() {
         DirectedGraph<String, WeightedEdge> grafo = crearGrafo();
         assertEquals("Porto_Alegre", algoritmos.obtenerCentroGrafo(grafo));
@@ -124,6 +133,8 @@ public class DirectedGraphRegressionTest extends TestCase {
         }
     }
 
+    // Desde un sumidero no se llega a los demás, pero sí a sí mismo con costo cero.
+    // Se comprueba tanto Floyd como la enumeración de caminos.
     public void testVerticeSinSalidasYCaminoDeLongitudCero() {
         DirectedGraph<String, WeightedEdge> grafo = crearGrafo();
         IFloydWarshallResult<String> resultado = algoritmos.floyd(grafo);

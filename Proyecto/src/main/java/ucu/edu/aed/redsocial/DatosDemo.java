@@ -8,50 +8,21 @@ import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/**
- * Dataset de ejemplo reproducible. Siempre arma la misma red, en el mismo orden,
- * así los tests y la demo dan siempre la misma salida.
- *
- *  "Facultad"                    puente                  "Música"
- *  ana   <-> bruno               ana  <-> ivan            elena    <-> facundo
- *  bruno <-> carla               ivan <-> elena           facundo  <-> gabriela
- *  carla  -> ana                                         gabriela  -> elena
- *  diego  -> ana, bruno                                  hernan    -> gabriela, facundo
- *
- *  julia: aislada (no sigue ni la siguen)
- *
- * Casos que cubre:
- * - Mutuos: ana-bruno, bruno-carla, ana-ivan, ivan-elena, elena-facundo, facundo-gabriela.
- * - Ciclo dirigido: ana -> bruno -> carla -> ana.
- * - Seguimiento no recíproco: carla -> ana, gabriela -> elena.
- * - Solo sigue, nadie lo sigue: diego y hernan (ningún camino llega a ellos).
- * - Puente: ivan es el único vínculo entre las dos comunidades; en la proyección no
- *   dirigida, ana, ivan y elena son puntos de articulación.
- * - Aislado: julia.
- * - Distancia larga: diego llega a facundo en 4 saltos (diego, ana, ivan, elena, facundo).
- *
- * Publicaciones (en este orden):
- *  p1  carla publica mencionando a @gabriela, que es de la otra comunidad y no la sigue.
- *      gabriela lo comparte -> llega a sus seguidores (facundo, hernan).   <- caso de la consigna
- *      bruno lo comparte -> llega a ana y diego.
- *      facundo comenta (le llegó por gabriela).
- *  p2  elena publica. ivan lo comparte -> llega a ana; ana lo comparte -> llega a bruno, carla
- *      y diego (el ciclo ana <-> ivan no lo repite). diego comenta arrobando a @julia, que está
- *      aislada y lo recibe por la mención. hernan no lo recibe: sigue a gabriela y facundo,
- *      que lo recibieron pero no lo compartieron.
- *  p3  julia publica: nadie la sigue, alcance vacío.
- */
+// Arma siempre la misma red de ejemplo para probar y mostrar en la defensa.
+// Hay dos grupos unidos por ivan, seguimientos mutuos, ciclos y una usuaria aislada.
+// Las publicaciones muestran cómo una mención o un compartido llegan a otros usuarios.
+// El orden de carga es fijo para que los ids y la salida sean reproducibles.
 public final class DatosDemo {
 
     private DatosDemo() {
     }
 
-    /** Cantidad de usuarios y de seguimientos que genera crearRedDemo(). */
+    // Cantidades esperadas después de cargar la demo completa.
     public static final int USUARIOS = 10;
     public static final int SEGUIMIENTOS = 18;
     public static final int POSTEOS = 3;
 
-    /** Crea una red nueva con el dataset de ejemplo. */
+    // Devuelve una red nueva cargando usuarios, después seguimientos y al final publicaciones.
     public static RedSocial crearRedDemo() {
         RedSocial red = new RedSocial();
         cargarUsuarios(red);
@@ -114,12 +85,13 @@ public final class DatosDemo {
         red.publicar("julia", "Hola, recien llego a la red");
     }
 
+    // El seguimiento mutuo se representa con dos aristas, una en cada sentido.
     private static void mutuo(RedSocial red, String a, String b) {
         red.seguir(a, b);
         red.seguir(b, a);
     }
 
-    /** Imprime un resumen de la red demo. Sirve para la defensa y para comparar con la salida esperada. */
+    // Carga la demo e imprime relaciones, alcance de los posteos y feed de cada usuario.
     public static void main(String[] args) {
         RedSocial red = crearRedDemo();
         System.out.println("Usuarios: " + red.cantidadDeUsuarios()
@@ -149,6 +121,7 @@ public final class DatosDemo {
         }
     }
 
+    // Convierte los usuarios en una lista de ids para imprimir; usa "-" si está vacía.
     private static String ids(Collection<Usuario> usuarios) {
         if (usuarios.isEmpty()) {
             return "-";

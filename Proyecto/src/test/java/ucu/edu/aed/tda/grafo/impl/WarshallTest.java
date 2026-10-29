@@ -5,6 +5,7 @@ import ucu.edu.aed.tda.grafo.model.edge.WeightedEdge;
 import ucu.edu.aed.tda.grafo.model.result.IFloydWarshallResult;
 import java.util.List;
 
+// Verifica la accesibilidad pedida para Warshall, junto con los saltos y rutas que devuelve esta versión.
 public class WarshallTest extends TestCase {
     private final DirectedGraphAlgorithms algorithms = new DirectedGraphAlgorithms();
 
@@ -14,6 +15,7 @@ public class WarshallTest extends TestCase {
         return graph;
     }
 
+    // El vacío no admite consultas de vértices; un vértice solo sí se alcanza a sí mismo.
     public void testVacioYUnitario() {
         IFloydWarshallResult<String> empty = algorithms.warshall(graph());
         try {
@@ -28,6 +30,8 @@ public class WarshallTest extends TestCase {
         assertEquals(List.of("A"), one.getPath("A", "A"));
     }
 
+    // Usa pesos distintos, incluso negativo, para comprobar que Warshall cuenta saltos y no pesos.
+    // También verifica el sentido de las aristas y un destino aislado.
     public void testCadenaYAristasDirigidas() {
         DirectedGraph<String, WeightedEdge> graph = graph("A", "B", "C", "D");
         graph.agregarArista("A", "B", new WeightedEdge(100));
@@ -42,6 +46,7 @@ public class WarshallTest extends TestCase {
         assertEquals(List.of(), result.getPath("A", "D"));
     }
 
+    // Un ciclo no debe alterar el costo cero hacia uno mismo ni conectar al vértice aislado.
     public void testCiclosYComponentes() {
         DirectedGraph<String, WeightedEdge> graph = graph("A", "B", "C", "D");
         graph.agregarArista("A", "B", new WeightedEdge(1));
@@ -55,6 +60,7 @@ public class WarshallTest extends TestCase {
         assertEquals(0.0, result.getCost("A", "A"), 0.0);
     }
 
+    // Aunque esté en esta clase, esta prueba llama a centro y excentricidad, que usan Floyd.
     public void testCentroYExcentricidadDeEntrada() {
         DirectedGraph<String, WeightedEdge> graph = graph("A", "B", "C");
         graph.agregarArista("A", "B", new WeightedEdge(2));

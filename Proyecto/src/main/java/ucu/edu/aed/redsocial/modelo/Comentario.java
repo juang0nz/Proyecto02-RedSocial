@@ -5,12 +5,8 @@ import java.util.LinkedHashSet;
 import java.util.Objects;
 import java.util.Set;
 
-/**
- * Comentario sobre un posteo. Inmutable; referencia al posteo por su id.
- *
- * Las menciones de un comentario cuentan para el posteo: el usuario arrobado recibe el
- * posteo comentado aunque no siga a nadie que lo haya publicado o compartido.
- */
+// Guarda un comentario y el id del posteo al que pertenece.
+// Sus menciones hacen llegar el posteo a esos usuarios, aunque no sigan al autor.
 public final class Comentario {
 
     private final String id;
@@ -20,6 +16,7 @@ public final class Comentario {
     private final long orden;
     private final Set<Usuario> mencionados;
 
+    // Copia las menciones para que el comentario no cambie si se modifica el conjunto recibido.
     public Comentario(String id, String posteoId, Usuario autor, String texto, long orden,
                       Set<Usuario> mencionados) {
         this.id = Objects.requireNonNull(id);
@@ -30,7 +27,8 @@ public final class Comentario {
         this.mencionados = Collections.unmodifiableSet(new LinkedHashSet<>(mencionados));
     }
 
-    /** Copia del comentario sin la mención a ese usuario. Se usa al eliminar usuarios. */
+    // Devuelve una copia sin mencionar al usuario eliminado, pero conserva el texto.
+    // Cuesta O(M), siendo M la cantidad de mencionados.
     public Comentario sinMencionA(Usuario usuario) {
         Set<Usuario> restantes = new LinkedHashSet<>(mencionados);
         restantes.remove(usuario);
@@ -57,11 +55,12 @@ public final class Comentario {
         return orden;
     }
 
-    /** Usuarios arrobados en el comentario, en orden de aparición. */
+    // Devuelve las menciones guardadas, en orden y sin permitir cambios.
     public Set<Usuario> getMencionados() {
         return mencionados;
     }
 
+    // Dos comentarios con el mismo id se consideran el mismo comentario.
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

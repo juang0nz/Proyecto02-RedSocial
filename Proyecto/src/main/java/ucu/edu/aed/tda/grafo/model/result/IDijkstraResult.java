@@ -3,26 +3,17 @@ package ucu.edu.aed.tda.grafo.model.result;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Modela el resultado de ejecutar Dijkstra.
- * Ofrece el método obtener costo  y obtener un camino al vértice pasado
- */
+// Permite consultar los caminos mínimos desde el origen usado en Dijkstra.
 public interface IDijkstraResult<V> {
-    /**
-     * Devuelve el costo minimo o infinito positivo si el destino es inaccesible.
-     * Lanza IllegalArgumentException para vertices ajenos al resultado.
-     */
+    // Devuelve el costo al destino, o infinito si no se puede llegar.
+    // Si el vértice no estaba en el resultado, lanza una excepción.
     double getCost(V otherVertex);
 
-    /**
-     * Retorna el camino con origen y destino, o una lista vacia si no hay ruta.
-     * Lanza IllegalArgumentException para vertices ajenos al resultado.
-     */
+    // Devuelve la ruta incluyendo origen y destino, o lista vacía si no hay camino.
+    // Un destino ajeno al resultado es un error.
     List<V> getPath(V otherVertex);
 
-    /**
-     * Vector de predecesores como mapa inmodificable destino -> predecesor.
-     * El origen y los vertices inaccesibles no tienen entrada.
-     */
+    // Para cada destino guarda el vértice anterior del camino, sin permitir cambios.
+    // El origen y los inalcanzables no tienen predecesor.
     Map<V, V> getPredecessors();
 }

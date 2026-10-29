@@ -14,24 +14,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/**
- * Algoritmo de difusión de contenido sobre un grafo dirigido donde A -> B significa
- * "A sigue a B". Es genérico (no conoce Usuario ni Posteo), igual que SocialGraphQueries,
- * para que el algoritmo quede separado del dominio y se pueda probar con Strings.
- *
- * El contenido viaja al revés que las aristas: lo que publica B le llega a quienes siguen
- * a B, o sea a sus predecesores.
- */
+// Calcula cómo se reparte un contenido entre seguidores, mencionados y quienes comparten.
+// A -> B significa que A sigue a B, así que el contenido viaja al revés de las aristas.
+// No depende de Usuario ni de Posteo: trabaja directamente con los vértices del grafo.
 public final class Difusion {
 
     private Difusion() {
     }
 
-    /**
-     * Seguidores de cada vértice (predecesores), calculados de una sola pasada por las aristas.
-     * O(V + E) en total, en lugar de O(V + E) por cada vértice que costaría llamar a
-     * predecessors() una vez por emisor. Cada lista respeta el orden de aristas() del grafo.
-     */
+    // Devuelve una lista de seguidores por vértice, invirtiendo las conexiones.
+    // Cuesta O(V + E) en tiempo y espacio; evita llamar a predecessors para cada emisor.
     public static <V, D> Map<V, List<V>> seguidoresDeCadaVertice(IDirectedIGraph<V, D> grafo) {
         Map<V, List<V>> seguidores = new LinkedHashMap<>();
         for (V v : grafo.vertices()) {
@@ -43,27 +35,11 @@ public final class Difusion {
         return seguidores;
     }
 
-    /**
-     * Calcula a quiénes llega un contenido publicado por origen.
-     *
-     * Reglas:
-     * - Los receptores directos (los mencionados) lo reciben aunque no sigan a nadie.
-     * - Un emisor hace llegar el contenido a todos sus seguidores. El origen es emisor.
-     * - Un reemisor (alguien que lo compartió) se vuelve emisor solo si lo recibió; así,
-     *   un mencionado que comparte lo hace llegar a sus propios seguidores.
-     * - Cada vértice se cuenta una sola vez (conjunto de alcanzados), por eso los ciclos de
-     *   seguimiento no producen difusión infinita.
-     * - El origen no forma parte de su propio alcance.
-     *
-     * Es un BFS sobre predecesores que solo expande desde los emisores. Devuelve los
-     * alcanzados en orden de descubrimiento: primero los receptores directos y después
-     * por niveles de compartidos.
-     *
-     * Complejidad: O(V + E) para armar los seguidores, más O(R) por los receptores directos;
-     * el BFS visita cada vértice y cada arista a lo sumo una vez. Espacio O(V + E).
-     *
-     * Lanza IllegalArgumentException si origen o algún receptor directo no está en el grafo.
-     */
+    // Recibe el autor, los receptores directos y quienes compartieron.
+    // Devuelve a quiénes llegó, sin incluir al autor y sin repetir usuarios.
+    // Un mencionado recibe aunque no siga al autor; solo reenvía si además compartió.
+    // El origen y todos los receptores directos tienen que existir en el grafo.
+    // Tiempo O(V + E + R), con R receptores directos, y espacio O(V + E).
     public static <V, D> Set<V> alcance(IDirectedIGraph<V, D> grafo, V origen,
                                         Collection<V> receptoresDirectos, Set<V> reemisores) {
         Set<V> vertices = grafo.vertices();
@@ -78,12 +54,14 @@ public final class Difusion {
 
         Map<V, List<V>> seguidores = seguidoresDeCadaVertice(grafo);
         Set<V> alcanzados = new LinkedHashSet<>();
+        // La cola no guarda a todos los que reciben, solo a quienes pueden reenviar.
         Deque<V> emisores = new ArrayDeque<>();
         emisores.add(origen);
 
         for (V receptor : receptoresDirectos) {
             recibir(receptor, origen, reemisores, alcanzados, emisores);
         }
+        // BFS por cadenas de compartidos, usando las listas de seguidores ya preparadas.
         while (!emisores.isEmpty()) {
             V emisor = emisores.poll();
             for (V seguidor : seguidores.get(emisor)) {
@@ -93,8 +71,10 @@ public final class Difusion {
         return Collections.unmodifiableSet(alcanzados);
     }
 
+    // Registra una recepción nueva y, si compartió, lo deja pendiente para reenviar.
     private static <V> void recibir(V vertice, V origen, Set<V> reemisores,
                                     Set<V> alcanzados, Deque<V> emisores) {
+        // Este control también corta los ciclos de seguimiento.
         if (vertice.equals(origen) || !alcanzados.add(vertice)) {
             return;
         }

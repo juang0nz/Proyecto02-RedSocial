@@ -2,20 +2,17 @@ package ucu.edu.aed.redsocial.modelo;
 
 import java.util.Objects;
 
-/**
- * Una línea del feed: qué posteo es, por qué le llegó al usuario y a través de quién.
- *
- * Si un posteo le llega por varios motivos, el feed muestra una sola entrada con el
- * motivo más reciente (por ejemplo, un compartido posterior a la publicación).
- */
+// Representa un posteo dentro del feed, con el motivo por el que apareció.
+// RedSocial elige la entrada más reciente si un posteo llega por varios motivos.
 public final class EntradaFeed {
 
+    // Distingue las tres formas en que un posteo puede aparecer en el feed.
     public enum Motivo {
-        /** Lo publicó alguien que el usuario sigue. via = el autor. */
+        // Lo publicó alguien que sigue el usuario; via es el autor.
         PUBLICACION,
-        /** Lo compartió alguien que el usuario sigue. via = quien lo compartió. */
+        // Lo compartió alguien que sigue el usuario; via es quien compartió.
         COMPARTIDO,
-        /** Arrobaron al usuario en el posteo o en un comentario. via = quien lo arrobó. */
+        // Lo mencionaron en el posteo o en un comentario; via es quien lo mencionó.
         MENCION
     }
 
@@ -24,6 +21,7 @@ public final class EntradaFeed {
     private final Usuario via;
     private final long orden;
 
+    // Guarda el posteo y el evento que explica su aparición en el feed.
     public EntradaFeed(Posteo posteo, Motivo motivo, Usuario via, long orden) {
         this.posteo = Objects.requireNonNull(posteo);
         this.motivo = Objects.requireNonNull(motivo);
@@ -43,7 +41,7 @@ public final class EntradaFeed {
         return via;
     }
 
-    /** Momento del evento que puso el posteo en el feed (publicación, compartido o mención). */
+    // Es el orden del evento que lo hizo aparecer, no necesariamente el de publicación.
     public long getOrden() {
         return orden;
     }

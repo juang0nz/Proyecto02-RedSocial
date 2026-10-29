@@ -4,27 +4,19 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.regex.Pattern;
 
-/**
- * Usuario de la red social. Es el tipo de vértice del grafo de seguimiento.
- *
- * La identidad del usuario es su id (el "handle" que se usa al arrobar, sin la @).
- * equals y hashCode dependen solo del id, para que el grafo, que guarda los
- * vértices en un LinkedHashMap, encuentre al usuario aunque se use otra instancia
- * con el mismo id. La clase es inmutable: si el id cambiara, el vértice quedaría mal ubicado
- * en el mapa del grafo.
- */
+// Representa a un usuario y se usa como vértice del grafo.
+// Se identifica por el id, no por el nombre ni por la instancia.
+// El id no cambia: cambiar una clave ya guardada rompería las búsquedas en el mapa.
 public final class Usuario {
 
-    /** Letras minúsculas, dígitos, punto o guion bajo; entre 1 y 30 caracteres. */
+    // El id permite letras minúsculas sin tilde, números, punto y guion bajo; hasta 30 caracteres.
     private static final Pattern FORMATO_ID = Pattern.compile("[a-z0-9._]{1,30}");
 
     private final String id;
     private final String nombre;
 
-    /**
-     * Crea un usuario. El id se normaliza con normalizarId y el nombre visible no puede ser vacío.
-     * Lanza IllegalArgumentException si el id o el nombre son inválidos.
-     */
+    // Normaliza el id y guarda el nombre sin espacios en los extremos.
+    // Si alguno de los datos es inválido, lanza una excepción.
     public Usuario(String id, String nombre) {
         this.id = normalizarId(id);
         if (nombre == null || nombre.isBlank()) {
@@ -33,11 +25,9 @@ public final class Usuario {
         this.nombre = nombre.trim();
     }
 
-    /**
-     * Normaliza un id: quita espacios, una @ inicial opcional y pasa a minúsculas.
-     * Así "@Ana", " ana " y "ana" refieren al mismo usuario. O(largo del id).
-     * Lanza IllegalArgumentException si el id es nulo, vacío o tiene caracteres no permitidos.
-     */
+    // Quita espacios de los extremos y un @ inicial, y pasa el id a minúsculas.
+    // Así "@Ana" y " ana " se buscan como "ana". Cuesta O(largo del id).
+    // Rechaza ids nulos o que no cumplan el formato.
     public static String normalizarId(String id) {
         if (id == null) {
             throw new IllegalArgumentException("El id del usuario no puede ser nulo");
@@ -46,6 +36,7 @@ public final class Usuario {
         if (normalizado.startsWith("@")) {
             normalizado = normalizado.substring(1);
         }
+        // ROOT evita que el resultado dependa del idioma de la computadora.
         normalizado = normalizado.toLowerCase(Locale.ROOT);
         if (!FORMATO_ID.matcher(normalizado).matches()) {
             throw new IllegalArgumentException("Id de usuario inválido: '" + id
@@ -62,6 +53,7 @@ public final class Usuario {
         return nombre;
     }
 
+    // Dos usuarios con el mismo id representan la misma cuenta.
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

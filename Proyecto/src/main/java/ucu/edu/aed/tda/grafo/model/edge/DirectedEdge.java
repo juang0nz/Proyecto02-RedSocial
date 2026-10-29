@@ -2,6 +2,7 @@ package ucu.edu.aed.tda.grafo.model.edge;
 
 import java.util.Objects;
 
+// Arista que va de source a target; la conexión inversa es otra arista.
 public class DirectedEdge<V, D> implements Edge<V, D> {
     private final V source, target;
     private final D dato;
@@ -28,6 +29,7 @@ public class DirectedEdge<V, D> implements Edge<V, D> {
         return true;
     }
 
+    // Compara los extremos en orden. El dato guardado no forma parte de la identidad.
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -40,8 +42,8 @@ public class DirectedEdge<V, D> implements Edge<V, D> {
     public int hashCode() {
         int h1 = Objects.hashCode(source);
         int h2 = Objects.hashCode(target);
-        // Mezcla orden-sensible + marca de dirigido
-        return 31 * (31 + h1) + h2; // simple y efectivo
+        // Combina los extremos respetando su orden, igual que equals.
+        return 31 * (31 + h1) + h2;
     }
 
     @Override

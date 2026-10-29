@@ -5,16 +5,9 @@ import java.util.LinkedHashSet;
 import java.util.Objects;
 import java.util.Set;
 
-/**
- * Publicación de un usuario. No es un vértice del grafo de seguimiento: vive en una
- * colección aparte de RedSocial y referencia a su autor y a los usuarios que menciona.
- *
- * Es inmutable. Los comentarios y los compartidos se guardan en RedSocial, porque tienen
- * su propio autor y su propio momento. La identidad es el id.
- *
- * El orden es un contador global de la red (1, 2, 3, ...): sirve para ordenar el feed sin
- * depender del reloj de la máquina, así la demo y los tests dan siempre lo mismo.
- */
+// Guarda una publicación, su autor y sus menciones. No es un vértice del grafo.
+// Los comentarios y compartidos se guardan aparte en RedSocial.
+// orden indica cuándo se publicó dentro de la secuencia de eventos de la red.
 public final class Posteo {
 
     private final String id;
@@ -23,6 +16,7 @@ public final class Posteo {
     private final long orden;
     private final Set<Usuario> mencionados;
 
+    // Guarda los datos y copia las menciones para que no se puedan cambiar desde afuera.
     public Posteo(String id, Usuario autor, String texto, long orden, Set<Usuario> mencionados) {
         this.id = Objects.requireNonNull(id);
         this.autor = Objects.requireNonNull(autor);
@@ -31,7 +25,8 @@ public final class Posteo {
         this.mencionados = Collections.unmodifiableSet(new LinkedHashSet<>(mencionados));
     }
 
-    /** Copia del posteo sin la mención a ese usuario. Se usa al eliminar usuarios. */
+    // Devuelve una copia sin la mención al usuario eliminado; no cambia el texto original.
+    // Cuesta O(M), siendo M la cantidad de mencionados.
     public Posteo sinMencionA(Usuario usuario) {
         Set<Usuario> restantes = new LinkedHashSet<>(mencionados);
         restantes.remove(usuario);
@@ -54,11 +49,12 @@ public final class Posteo {
         return orden;
     }
 
-    /** Usuarios arrobados en el texto del posteo, en orden de aparición. */
+    // Devuelve las menciones guardadas, conservando el orden y sin permitir cambios.
     public Set<Usuario> getMencionados() {
         return mencionados;
     }
 
+    // La identidad del posteo depende solo de su id.
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

@@ -22,49 +22,19 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/**
- * Núcleo de la red social: usuarios, relaciones de seguimiento y publicaciones.
- *
- * Modelo:
- * - Cada usuario es un vértice de un DirectedGraph<Usuario, WeightedEdge>.
- * - Una arista A -> B significa "A sigue a B". Por eso los seguidos de A son
- *   sus sucesores y los seguidores de B son sus predecesores.
- * - Todas las aristas pesan PESO_SEGUIMIENTO (1): los grados de separación cuentan
- *   saltos. El dato es un WeightedEdge porque Dijkstra, Floyd y Warshall lo exigen.
- * - Un seguimiento mutuo son dos aristas, A -> B y B -> A.
- * - No se permite seguirse a sí mismo (el grafo lo aceptaría, por eso se valida acá) ni
- *   seguimientos repetidos (los rechaza el grafo).
- *
- * Las adyacencias viven solo en el grafo. Además se mantiene un índice id -> Usuario
- * para resolver ids en O(1) y validar existencia sin pasar por buscarVertice, que es O(V).
- * El índice no duplica relaciones: solo los vértices.
- *
- * Publicaciones:
- * - Posteos, comentarios y compartidos no son vértices: viven en colecciones aparte
- *   y referencian usuarios. Así los algoritmos sobre el grafo de seguimiento no los ven.
- * - Las menciones salen del texto: cada @id de un usuario existente (que no sea el autor)
- *   es una mención. Un @ de alguien que no existe se deja como texto.
- * - Solo puede comentar o compartir un posteo su autor o alguien a quien le llegó.
- * - El alcance y el feed siguen las mismas reglas (ver Difusion.alcance), así que un
- *   usuario tiene un posteo en su feed si y solo si está en el alcance del posteo.
- *
- * Errores:
- * Igual que la biblioteca, toda entrada inválida lanza IllegalArgumentException
- * (id mal formado, nombre vacío, id repetido, usuario inexistente o auto-seguimiento);
- * el mensaje indica cuál fue. Seguir o dejar de seguir de forma redundante no es un error:
- * devuelve false, igual que la API del grafo.
- *
- * Complejidad:
- * V = usuarios, E = seguimientos, Δ = cantidad de seguidos del usuario consultado,
- * P = posteos, C = comentarios, S = compartidos (A = P + C + S, toda la actividad).
- * Los costos incluyen el buscarVertice lineal de DirectedGraph.
- */
+// Maneja los usuarios, seguimientos y publicaciones de la red social.
+// Cada usuario es un vértice y A -> B significa que A sigue a B.
+// Los posteos, comentarios y compartidos se guardan aparte, no son vértices.
+// El mapa por id permite encontrar usuarios sin recorrer todo el grafo.
+// En los costos: V son los usuarios, E los seguimientos y P los posteos.
+// A cuenta la actividad recorrida, incluyendo sus menciones, y F las entradas del feed.
+// Los accesos a mapas se consideran O(1) esperado, aparte del costo de procesar los textos.
 public class RedSocial {
 
-    /** Peso de cada arista de seguimiento. */
+    // Todos los seguimientos pesan uno, así los costos de los caminos cuentan saltos.
     public static final double PESO_SEGUIMIENTO = 1.0;
 
-    /** Una @ que no esté pegada a otra palabra (así "ana@mail.com" no es una mención). */
+    // Evita tomar el @ de un correo como una mención.
     private static final Pattern MENCION = Pattern.compile("(?<![A-Za-z0-9._])@([A-Za-z0-9._]+)");
 
     private final IDirectedIGraph<Usuario, WeightedEdge> seguimientos = new DirectedGraph<>();
@@ -74,17 +44,16 @@ public class RedSocial {
     private final Map<String, Posteo> posteos = new LinkedHashMap<>();
     private final Map<String, List<Comentario>> comentariosPorPosteo = new HashMap<>();
     private final Map<String, List<Compartido>> compartidosPorPosteo = new HashMap<>();
-    /** Contador global de eventos (publicar, comentar, compartir): da el orden del feed. */
+    // Ordena los eventos sin depender de la hora de la computadora.
     private long reloj = 0;
     private int ultimoPosteo = 0;
     private int ultimoComentario = 0;
 
-    // ------------------------------------------------------------------ usuarios
+    // Usuarios
 
-    /**
-     * Registra un usuario nuevo y lo devuelve con el id normalizado. O(1) promedio.
-     * Lanza IllegalArgumentException si el id o el nombre son inválidos, o si el id ya existe.
-     */
+    // Valida los datos y devuelve el usuario nuevo con su id normalizado.
+    // Lo agrega al grafo y al índice por id; si ya existe, lanza una excepción.
+    // Los accesos a las dos estructuras cuestan O(1) esperado.
     public Usuario registrarUsuario(String id, String nombre) {
         Usuario usuario = new Usuario(id, nombre);
         if (usuariosPorId.containsKey(usuario.getId())) {
@@ -95,14 +64,9 @@ public class RedSocial {
         return usuario;
     }
 
-    /**
-     * Elimina un usuario con todos sus seguimientos (los que hace y los que recibe; el grafo
-     * borra las aristas entrantes al remover el vértice) y toda su actividad: sus posteos
-     * (con sus comentarios y compartidos), sus comentarios y compartidos en posteos ajenos y
-     * las menciones que le hicieron. Así no quedan referencias a un usuario inexistente y,
-     * si el id se vuelve a registrar, no hereda nada. O(V + E + A).
-     * Lanza IllegalArgumentException si el usuario no existe.
-     */
+    // Quita al usuario, sus seguimientos y su actividad, incluidas las menciones que recibió.
+    // Así, si se registra otra vez con el mismo id, no hereda la actividad anterior.
+    // Si no existe, falla. Costo O(V + E + A).
     public void eliminarUsuario(String id) {
         Usuario usuario = obtenerUsuario(id);
         seguimientos.removerVertice(seguimientos.construirComparable(usuario));
@@ -110,6 +74,7 @@ public class RedSocial {
         eliminarActividadDe(usuario);
     }
 
+    // Borra primero los posteos propios y después limpia la actividad en posteos ajenos.
     private void eliminarActividadDe(Usuario usuario) {
         List<String> posteosPropios = new ArrayList<>();
         for (Posteo posteo : posteos.values()) {
@@ -117,6 +82,7 @@ public class RedSocial {
                 posteosPropios.add(posteo.getId());
             }
         }
+        // Juntamos los ids antes de borrar para no modificar el mapa mientras lo recorremos.
         for (String posteoId : posteosPropios) {
             posteos.remove(posteoId);
             comentariosPorPosteo.remove(posteoId);
@@ -125,6 +91,7 @@ public class RedSocial {
         for (Map.Entry<String, Posteo> entrada : posteos.entrySet()) {
             String posteoId = entrada.getKey();
             if (entrada.getValue().getMencionados().contains(usuario)) {
+                // Los modelos son inmutables: los reemplazamos por copias sin esa mención.
                 entrada.setValue(entrada.getValue().sinMencionA(usuario));
             }
             compartidosPorPosteo.get(posteoId).removeIf(c -> c.getUsuario().equals(usuario));
@@ -134,10 +101,8 @@ public class RedSocial {
         }
     }
 
-    /**
-     * Devuelve el usuario con ese id. O(1).
-     * Lanza IllegalArgumentException si el usuario no existe o el id tiene formato inválido.
-     */
+    // Normaliza el id y busca en el mapa en O(1) esperado.
+    // Devuelve el usuario o lanza una excepción si no existe.
     public Usuario obtenerUsuario(String id) {
         Usuario usuario = usuariosPorId.get(Usuario.normalizarId(id));
         if (usuario == null) {
@@ -146,7 +111,7 @@ public class RedSocial {
         return usuario;
     }
 
-    /** O(1). Un id con formato inválido simplemente no existe. */
+    // Comprueba el id en el mapa; si tiene formato inválido, devuelve false.
     public boolean existeUsuario(String id) {
         try {
             return usuariosPorId.containsKey(Usuario.normalizarId(id));
@@ -155,7 +120,7 @@ public class RedSocial {
         }
     }
 
-    /** Usuarios en orden de registro (vista inmodificable). O(1). */
+    // Devuelve una vista de los usuarios en orden de registro, sin permitir cambios.
     public Collection<Usuario> usuarios() {
         return Collections.unmodifiableCollection(usuariosPorId.values());
     }
@@ -164,14 +129,10 @@ public class RedSocial {
         return usuariosPorId.size();
     }
 
-    // ------------------------------------------------------------------ seguimiento
+    // Seguimientos
 
-    /**
-     * seguidor empieza a seguir a seguido: agrega la arista seguidor -> seguido.
-     * O(Δ) (el grafo revisa los seguidos del seguidor para no duplicar).
-     * Retorna true si se agregó y false si ya lo seguía.
-     * Lanza IllegalArgumentException si alguno no existe o si seguidor y seguido son el mismo usuario.
-     */
+    // Valida ambos usuarios y agrega seguidor -> seguido; no permite seguirse a uno mismo.
+    // Devuelve false si ya lo seguía. Cuesta O(cantidad de seguidos del seguidor).
     public boolean seguir(String seguidorId, String seguidoId) {
         Usuario seguidor = obtenerUsuario(seguidorId);
         Usuario seguido = obtenerUsuario(seguidoId);
@@ -181,11 +142,8 @@ public class RedSocial {
         return seguimientos.agregarArista(seguidor, seguido, new WeightedEdge(PESO_SEGUIMIENTO));
     }
 
-    /**
-     * Quita la arista seguidor -> seguido. La arista inversa, si existe, no se toca. O(V + Δ).
-     * Retorna true si lo seguía y se quitó, false si no lo seguía.
-     * Lanza IllegalArgumentException si alguno no existe.
-     */
+    // Quita solo seguidor -> seguido, sin tocar el seguimiento en sentido contrario.
+    // Devuelve si lo pudo quitar. Costo O(V + cantidad de seguidos del seguidor).
     public boolean dejarDeSeguir(String seguidorId, String seguidoId) {
         Usuario seguidor = obtenerUsuario(seguidorId);
         Usuario seguido = obtenerUsuario(seguidoId);
@@ -193,7 +151,7 @@ public class RedSocial {
                 seguimientos.construirComparable(seguido));
     }
 
-    /** ¿Existe la arista seguidor -> seguido? O(V + Δ). */
+    // Comprueba el seguimiento en ese sentido. O(V + cantidad de seguidos del seguidor).
     public boolean sigueA(String seguidorId, String seguidoId) {
         Usuario seguidor = obtenerUsuario(seguidorId);
         Usuario seguido = obtenerUsuario(seguidoId);
@@ -201,33 +159,27 @@ public class RedSocial {
                 seguimientos.construirComparable(seguido));
     }
 
-    /** ¿Se siguen mutuamente? Comprueba A -> B y B -> A. O(V + Δ). */
+    // Para que sean mutuos tienen que existir las dos aristas, A -> B y B -> A.
     public boolean sonMutuos(String idA, String idB) {
         return sigueA(idA, idB) && sigueA(idB, idA);
     }
 
-    /**
-     * A quiénes sigue el usuario: sus sucesores, en el orden en que empezó a seguirlos.
-     * O(V + Δ).
-     */
+    // Devuelve a quiénes sigue, en el orden en que empezó a seguirlos.
+    // Costo O(V + cantidad de seguidos), por la búsqueda lineal dentro del grafo.
     public Set<Usuario> seguidos(String id) {
         Usuario usuario = obtenerUsuario(id);
         return Collections.unmodifiableSet(seguimientos.successors(seguimientos.construirComparable(usuario)));
     }
 
-    /**
-     * Quiénes siguen al usuario: sus predecesores, en orden de registro. O(V + E), porque
-     * DirectedGraph solo guarda aristas salientes y tiene que revisarlas todas.
-     */
+    // Devuelve quiénes lo siguen, en orden de registro.
+    // Cuesta O(V + E): el grafo revisa todas las salientes para encontrar las entrantes.
     public Set<Usuario> seguidores(String id) {
         Usuario usuario = obtenerUsuario(id);
         return Collections.unmodifiableSet(seguimientos.predecessors(seguimientos.construirComparable(usuario)));
     }
 
-    /**
-     * Usuarios con los que el seguimiento es recíproco: seguidos ∩ seguidores, en el orden
-     * de los seguidos. O(V + E): se calcula una vez cada conjunto y se intersecta en O(Δ).
-     */
+    // Deja solo los usuarios que están tanto en seguidos como en seguidores.
+    // Conserva el orden de los seguidos. Costo O(V + E).
     public Set<Usuario> seguidoresMutuos(String id) {
         Set<Usuario> mutuos = new LinkedHashSet<>(seguidos(id));
         mutuos.retainAll(seguidores(id));
@@ -242,17 +194,16 @@ public class RedSocial {
         return seguidos(id).size();
     }
 
+    // Contar aristas arma antes el conjunto completo, así que cuesta O(V + E).
     public int cantidadDeSeguimientos() {
         return seguimientos.cantidadDeAristas();
     }
 
-    // ------------------------------------------------------------------ publicaciones
+    // Publicaciones
 
-    /**
-     * Publica un posteo. Las menciones (@id) se detectan en el texto y cada una se resuelve
-     * en el índice de usuarios en O(1), así que cuesta O(largo del texto).
-     * Lanza IllegalArgumentException si el autor no existe o el texto está vacío.
-     */
+    // Crea y devuelve el posteo, con id propio, orden y menciones tomadas del texto.
+    // También prepara sus listas de comentarios y compartidos.
+    // Rechaza autores inexistentes y textos vacíos.
     public Posteo publicar(String autorId, String texto) {
         Usuario autor = obtenerUsuario(autorId);
         String contenido = validarTexto(texto);
@@ -264,13 +215,9 @@ public class RedSocial {
         return posteo;
     }
 
-    /**
-     * Comenta un posteo. Los usuarios arrobados en el comentario pasan a recibir el posteo.
-     * Solo puede comentar el autor o alguien a quien le llegó el posteo, porque hay que
-     * verificar que esté en el alcance: O(V + E + A).
-     * Lanza IllegalArgumentException si el posteo o el autor no existen, si el texto está
-     * vacío o si el posteo no le llegó al autor del comentario.
-     */
+    // Crea y devuelve un comentario si el usuario es el autor del posteo o lo recibió.
+    // Las menciones del comentario también hacen llegar el posteo a esos usuarios.
+    // Verificar el alcance cuesta O(V + E + A), además de procesar el texto nuevo.
     public Comentario comentar(String posteoId, String autorId, String texto) {
         Posteo posteo = obtenerPosteo(posteoId);
         Usuario autor = obtenerUsuario(autorId);
@@ -285,14 +232,9 @@ public class RedSocial {
         return comentario;
     }
 
-    /**
-     * El usuario comparte el posteo: a partir de ahora les llega también a sus seguidores.
-     * Solo puede compartir alguien a quien el posteo le llegó (seguidor de quien lo publicó o
-     * compartió, o mencionado), así que se verifica el alcance: O(V + E + A).
-     * Retorna true si lo compartió y false si ya lo había compartido.
-     * Lanza IllegalArgumentException si el posteo o el usuario no existen, si es el autor o
-     * si el posteo no le llegó.
-     */
+    // Registra un compartido para que el posteo pueda llegar a los seguidores del usuario.
+    // El autor no puede compartirlo y los demás tienen que haberlo recibido.
+    // Devuelve false si ya lo compartió. Costo O(V + E + A).
     public boolean compartir(String posteoId, String usuarioId) {
         Posteo posteo = obtenerPosteo(posteoId);
         Usuario usuario = obtenerUsuario(usuarioId);
@@ -313,16 +255,13 @@ public class RedSocial {
         return true;
     }
 
-    /**
-     * Usuarios a los que llega el posteo: seguidores del autor, mencionados (en el posteo o
-     * en sus comentarios) y, por cada usuario alcanzado que lo compartió, sus seguidores.
-     * No incluye al autor. Cada usuario aparece una vez. O(V + E + A); ver Difusion.alcance.
-     * Lanza IllegalArgumentException si el posteo no existe.
-     */
+    // Devuelve quienes reciben el posteo por seguimiento, mención o cadenas de compartidos.
+    // No incluye al autor ni repite usuarios. Se recalcula con la red actual. O(V + E + A).
     public Set<Usuario> alcance(String posteoId) {
         return alcanceDe(obtenerPosteo(posteoId));
     }
 
+    // Prepara los reemisores y las menciones para que Difusion haga el recorrido.
     private Set<Usuario> alcanceDe(Posteo posteo) {
         Set<Usuario> compartieron = new LinkedHashSet<>();
         for (Compartido compartido : compartidosPorPosteo.get(posteo.getId())) {
@@ -331,22 +270,19 @@ public class RedSocial {
         return Difusion.alcance(seguimientos, posteo.getAutor(), mencionadosDe(posteo), compartieron);
     }
 
+    // El autor puede comentar directamente; para los demás se comprueba la recepción.
     private boolean puedeInteractuar(Usuario usuario, Posteo posteo) {
         return usuario.equals(posteo.getAutor()) || alcanceDe(posteo).contains(usuario);
     }
 
-    /**
-     * Feed del usuario: posteos publicados o compartidos por alguien que sigue y posteos
-     * donde lo mencionaron. No incluye sus propios posteos. Hay una entrada por posteo, con
-     * el motivo más reciente, ordenadas de la más nueva a la más vieja.
-     *
-     * Recorre toda la actividad de la red: O(V + Δ + A + F log F), con F las entradas del feed.
-     * Es candidata a optimizar (Desafío 3) con índices por usuario.
-     * Lanza IllegalArgumentException si el usuario no existe.
-     */
+    // Arma el feed revisando publicaciones, menciones y compartidos de quienes sigue.
+    // No muestra posteos propios y deja una sola entrada por posteo: la del motivo más reciente.
+    // Devuelve las entradas de más nuevas a más viejas.
+    // Costo O(V + cantidad de seguidos + A + F log F).
     public List<EntradaFeed> feed(String usuarioId) {
         Usuario usuario = obtenerUsuario(usuarioId);
         Set<Usuario> seguidos = seguidos(usuarioId);
+        // Usar el id del posteo como clave evita duplicarlo por distintos motivos.
         Map<String, EntradaFeed> masReciente = new LinkedHashMap<>();
         for (Posteo posteo : posteos.values()) {
             if (posteo.getAutor().equals(usuario)) {
@@ -378,7 +314,7 @@ public class RedSocial {
         return Collections.unmodifiableList(feed);
     }
 
-    /** Se queda con la entrada más reciente de cada posteo; ante empate, con la primera. */
+    // Reemplaza la entrada solo si la nueva es más reciente; en empate queda la primera.
     private static void considerar(Map<String, EntradaFeed> masReciente, EntradaFeed candidata) {
         String posteoId = candidata.getPosteo().getId();
         EntradaFeed actual = masReciente.get(posteoId);
@@ -387,7 +323,7 @@ public class RedSocial {
         }
     }
 
-    /** Lanza IllegalArgumentException si el posteo no existe. O(1). */
+    // Busca el posteo por id en O(1) esperado y falla si no existe.
     public Posteo obtenerPosteo(String posteoId) {
         Posteo posteo = posteoId == null ? null : posteos.get(posteoId);
         if (posteo == null) {
@@ -396,7 +332,7 @@ public class RedSocial {
         return posteo;
     }
 
-    /** Posteos del usuario en orden de publicación. O(P). */
+    // Revisa todos los posteos y devuelve los del usuario en orden de publicación. O(P).
     public List<Posteo> posteosDe(String usuarioId) {
         Usuario usuario = obtenerUsuario(usuarioId);
         List<Posteo> propios = new ArrayList<>();
@@ -408,7 +344,7 @@ public class RedSocial {
         return Collections.unmodifiableList(propios);
     }
 
-    /** Todos los posteos en orden de publicación. */
+    // Vista de los posteos en orden de publicación, sin permitir cambios desde afuera.
     public Collection<Posteo> posteos() {
         return Collections.unmodifiableCollection(posteos.values());
     }
@@ -417,12 +353,12 @@ public class RedSocial {
         return posteos.size();
     }
 
-    /** Comentarios del posteo en orden. O(1). */
+    // Valida el posteo y devuelve una vista de sus comentarios en orden. O(1) esperado.
     public List<Comentario> comentarios(String posteoId) {
         return Collections.unmodifiableList(comentariosPorPosteo.get(obtenerPosteo(posteoId).getId()));
     }
 
-    /** Quiénes compartieron el posteo, en el orden en que lo hicieron. O(S del posteo). */
+    // Devuelve quiénes compartieron, en orden. Recorre los compartidos de este posteo.
     public List<Usuario> compartidoPor(String posteoId) {
         List<Usuario> usuarios = new ArrayList<>();
         for (Compartido compartido : compartidosPorPosteo.get(obtenerPosteo(posteoId).getId())) {
@@ -431,7 +367,8 @@ public class RedSocial {
         return Collections.unmodifiableList(usuarios);
     }
 
-    /** Mencionados en el posteo y en sus comentarios, sin repetir. O(menciones del posteo). */
+    // Junta las menciones del posteo y sus comentarios, sin repetir usuarios.
+    // Recorre todos sus comentarios, incluso los que no tienen menciones.
     public Set<Usuario> mencionados(String posteoId) {
         return Collections.unmodifiableSet(mencionadosDe(obtenerPosteo(posteoId)));
     }
@@ -444,6 +381,7 @@ public class RedSocial {
         return mencionados;
     }
 
+    // Rechaza texto vacío y devuelve el contenido sin espacios en los extremos.
     private static String validarTexto(String texto) {
         if (texto == null || texto.isBlank()) {
             throw new IllegalArgumentException("El texto no puede ser vacío");
@@ -451,11 +389,8 @@ public class RedSocial {
         return texto.trim();
     }
 
-    /**
-     * Usuarios existentes arrobados en el texto, en orden de aparición y sin repetir.
-     * Se ignoran el propio autor, los @ de usuarios que no existen y los puntos finales
-     * ("@ana." menciona a ana).
-     */
+    // Extrae los @id del texto y devuelve los usuarios existentes, sin repetir.
+    // Ignora al autor y los puntos finales: "@ana." se busca como "ana".
     private Set<Usuario> mencionesEn(String texto, Usuario autor) {
         Set<Usuario> mencionados = new LinkedHashSet<>();
         Matcher matcher = MENCION.matcher(texto);
@@ -471,10 +406,7 @@ public class RedSocial {
         return mencionados;
     }
 
-    /**
-     * Grafo de seguimiento para pasarle a los algoritmos de la biblioteca. Es una vista de
-     * solo lectura: las modificaciones tiran UnsupportedOperationException.
-     */
+    // Entrega el grafo a los algoritmos sin permitir que cambien los seguimientos.
     public IDirectedIGraph<Usuario, WeightedEdge> grafoDeSeguimiento() {
         return vistaSeguimientos;
     }

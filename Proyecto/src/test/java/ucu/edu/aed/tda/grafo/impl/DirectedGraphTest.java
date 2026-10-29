@@ -6,6 +6,7 @@ import ucu.edu.aed.tda.grafo.model.edge.Edge;
 import java.util.Arrays;
 import java.util.Set;
 
+// Comprueba las operaciones dirigidas del primer requisito y varios casos especiales de la consigna.
 public class DirectedGraphTest extends TestCase {
 
     private DirectedGraph<String, Integer> grafo(String... vertices) {
@@ -18,6 +19,7 @@ public class DirectedGraphTest extends TestCase {
         return x -> x.equals(valor) ? 0 : 1;
     }
 
+    // Verifica altas, duplicados, nulos y búsquedas de vértices existentes e inexistentes.
     public void testAgregarVerticesYDuplicados() {
         DirectedGraph<String, Integer> grafo = grafo("A", "B", "A");
         assertEquals(2, grafo.cantidadDeVertices());
@@ -31,6 +33,7 @@ public class DirectedGraphTest extends TestCase {
         assertFalse(grafo.existeVertice(criterio("X")));
     }
 
+    // A -> B y B -> A son aristas distintas; una repetida no debe cambiar el dato original.
     public void testAristasDirigidasYDuplicados() {
         DirectedGraph<String, Integer> grafo = grafo("A", "B");
         assertFalse(grafo.agregarArista("A", "X", 1));
@@ -46,6 +49,7 @@ public class DirectedGraphTest extends TestCase {
         assertFalse(grafo.existeArista(criterio("X"), criterio("A")));
     }
 
+    // Al borrar una arista dirigida, la conexión contraria tiene que seguir existiendo.
     public void testEliminarAristaSoloEnUnaDireccion() {
         DirectedGraph<String, Integer> grafo = grafo("A", "B");
         grafo.agregarArista("A", "B", 1);
@@ -58,6 +62,7 @@ public class DirectedGraphTest extends TestCase {
         assertEquals(1, grafo.cantidadDeAristas());
     }
 
+    // Quitar un vértice debe limpiar sus entradas, sus salidas y su lazo, sin borrar otras aristas.
     public void testRemoverVerticeEliminaEntrantesSalientesYAutoarista() {
         DirectedGraph<String, Integer> grafo = grafo("A", "B", "C", "D");
         grafo.agregarArista("A", "B", 1);
@@ -74,6 +79,7 @@ public class DirectedGraphTest extends TestCase {
         assertEquals(Set.of("C"), grafo.predecessors(criterio("D")));
     }
 
+    // Relaciona las consultas pedidas de sucesores y predecesores con los grados de salida y entrada.
     public void testSucesoresPredecesoresYGrados() {
         DirectedGraph<String, Integer> grafo = grafo("A", "B", "C", "D");
         grafo.agregarArista("A", "B", 1);
@@ -91,6 +97,7 @@ public class DirectedGraphTest extends TestCase {
         assertEquals(2, grafo.gradoDeSalida(criterio("A")));
     }
 
+    // Las colecciones de consulta no deben permitir cambios que salteen las operaciones del grafo.
     public void testColeccionesInmodificables() {
         DirectedGraph<String, Integer> grafo = grafo("A", "B");
         grafo.agregarArista("A", "B", 1);
@@ -114,6 +121,7 @@ public class DirectedGraphTest extends TestCase {
         }
     }
 
+    // Después de vaciar, comprueba los conteos y que el grafo se considere conexo y sin ciclos.
     public void testVaciarRestableceConteosYConsultas() {
         DirectedGraph<String, Integer> grafo = grafo("A", "B");
         grafo.agregarArista("A", "B", 1);
@@ -128,6 +136,8 @@ public class DirectedGraphTest extends TestCase {
         assertFalse(grafo.tieneCiclos());
     }
 
+    // Aclara qué conexidad se implementó: se ignora la dirección, pero un aislado separa el grafo.
+    // También verifica los casos vacío y de un solo vértice pedidos en el desafío.
     public void testConectividadDebil() {
         DirectedGraph<String, Integer> cadena = grafo("A", "B", "C");
         cadena.agregarArista("A", "B", 1);
@@ -140,6 +150,7 @@ public class DirectedGraphTest extends TestCase {
         assertTrue(grafo().esConexo());
     }
 
+    // Distingue caminos que convergen de un ciclo real y detecta un lazo en otra componente.
     public void testCiclosDirigidosYComponentes() {
         DirectedGraph<String, Integer> grafo = grafo("A", "B", "C", "D", "E");
         grafo.agregarArista("A", "B", 1);
@@ -155,6 +166,7 @@ public class DirectedGraphTest extends TestCase {
         assertTrue(grafo.tieneCiclos());
     }
 
+    // Comprueba que se pueda buscar por criterio y usar otra instancia igual del mismo vértice.
     public void testComparablePersonalizadoYObjetosIguales() {
         DirectedGraph<String, Integer> grafo = new DirectedGraph<>();
         String registrado = new String("usuario");

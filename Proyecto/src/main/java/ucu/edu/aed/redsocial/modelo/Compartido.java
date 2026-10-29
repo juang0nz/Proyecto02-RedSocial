@@ -2,17 +2,15 @@ package ucu.edu.aed.redsocial.modelo;
 
 import java.util.Objects;
 
-/**
- * Registro de que un usuario compartió un posteo. Es una clase propia (y no solo un
- * conjunto de usuarios dentro del posteo) porque el feed necesita saber cuándo se
- * compartió: un compartido reciente sube el posteo en el feed de los seguidores.
- */
+// Registra quién compartió un posteo y en qué orden ocurrió.
+// Ese orden permite subir el posteo en el feed cuando alguien lo comparte.
 public final class Compartido {
 
     private final String posteoId;
     private final Usuario usuario;
     private final long orden;
 
+    // Relaciona el id del posteo con quien lo compartió y el orden del evento.
     public Compartido(String posteoId, Usuario usuario, long orden) {
         this.posteoId = Objects.requireNonNull(posteoId);
         this.usuario = Objects.requireNonNull(usuario);

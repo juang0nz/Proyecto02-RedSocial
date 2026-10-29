@@ -8,10 +8,12 @@ import ucu.edu.aed.tda.grafo.model.result.IFloydWarshallResult;
 import java.util.List;
 
 /** Casos complementarios de rutas minimas para grafos dirigidos. */
+// Estas pruebas aportan evidencia para los casos especiales del quinto requisito del desafío.
 public class ShortestPathsEdgeCasesTest extends TestCase {
 
     private final DirectedGraphAlgorithms algorithms = new DirectedGraphAlgorithms();
 
+    // En vacío se prueba Floyd; con un vértice, Dijkstra y Floyd deben dar costo cero a sí mismo.
     public void testGrafoVacioYUnSoloVertice() {
         DirectedGraph<String, WeightedEdge> empty = new DirectedGraph<>();
         IFloydWarshallResult<String> emptyResult = algorithms.floyd(empty);
@@ -32,6 +34,8 @@ public class ShortestPathsEdgeCasesTest extends TestCase {
         assertEquals(List.of("A"), floyd.getPath("A", "A"));
     }
 
+    // Hay dos caminos de costo uno hasta D. Se comprueba costo y extremos,
+    // sin exigir cuál de las alternativas empatadas debe elegir cada algoritmo.
     public void testEmpatesYAristasDePesoCero() {
         DirectedGraph<String, WeightedEdge> graph = new DirectedGraph<>();
         graph.agregarVertices(List.of("A", "B", "C", "D"));
@@ -51,6 +55,7 @@ public class ShortestPathsEdgeCasesTest extends TestCase {
         assertEquals("D", floyd.getPath("A", "D").get(floyd.getPath("A", "D").size() - 1));
     }
 
+    // Tener A -> B no permite volver desde B; el aislado C tampoco debe aparecer como alcanzable.
     public void testSentidoDeAristasYDestinosInalcanzables() {
         DirectedGraph<String, WeightedEdge> graph = new DirectedGraph<>();
         graph.agregarVertices(List.of("A", "B", "C"));

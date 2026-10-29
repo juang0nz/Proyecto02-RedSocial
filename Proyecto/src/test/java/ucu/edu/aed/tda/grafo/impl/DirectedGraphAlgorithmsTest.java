@@ -6,6 +6,7 @@ import ucu.edu.aed.tda.grafo.model.result.IFloydWarshallResult;
 
 import java.util.List;
 
+// Comprueba Floyd, centro y excentricidad del Desafío 1 con resultados esperados concretos.
 public class DirectedGraphAlgorithmsTest extends TestCase {
 
     private final DirectedGraphAlgorithms algoritmos = new DirectedGraphAlgorithms();
@@ -16,6 +17,7 @@ public class DirectedGraphAlgorithmsTest extends TestCase {
         return grafo;
     }
 
+    // Antes de probar los algoritmos, verifica que la estructura conserve las conexiones ingresadas.
     public void testInsercionDirigidaSinDuplicados() {
         DirectedGraph<String, WeightedEdge> grafo = grafo("A", "B", "C");
         assertFalse(grafo.agregarVertice("A"));
@@ -41,6 +43,8 @@ public class DirectedGraphAlgorithmsTest extends TestCase {
         }
     }
 
+    // La ruta por varios intermedios cuesta menos que la directa, incluso con un tramo de peso cero.
+    // El vértice E permite comprobar también aislamiento y el camino de longitud cero.
     public void testFloydReconstruyeCaminoConVariosIntermedios() {
         DirectedGraph<String, WeightedEdge> grafo = grafo("A", "B", "C", "D", "E");
         grafo.agregarArista("A", "D", new WeightedEdge(20));
@@ -59,6 +63,7 @@ public class DirectedGraphAlgorithmsTest extends TestCase {
         assertEquals(List.of("E"), resultado.getPath("E", "E"));
     }
 
+    // El resultado de Floyd debe seguir consultándose después de vaciar el grafo original.
     public void testResultadoNoCambiaAlModificarGrafo() {
         DirectedGraph<String, WeightedEdge> grafo = grafo("A", "B");
         grafo.agregarArista("A", "B", new WeightedEdge(5));
@@ -68,6 +73,7 @@ public class DirectedGraphAlgorithmsTest extends TestCase {
         assertEquals(List.of("A", "B"), resultado.getPath("A", "B"));
     }
 
+    // Costo, camino y accesibilidad deben rechazar vértices que no estén en el resultado.
     public void testConsultasConVerticeDesconocidoFallanExplicitamente() {
         IFloydWarshallResult<String> resultado = algoritmos.floyd(grafo("A"));
         try {
@@ -90,6 +96,7 @@ public class DirectedGraphAlgorithmsTest extends TestCase {
         }
     }
 
+    // Floyd, a diferencia de Dijkstra, permite este peso negativo porque no hay ciclo negativo.
     public void testPesosNegativosSinCicloNegativo() {
         DirectedGraph<String, WeightedEdge> grafo = grafo("A", "B", "C");
         grafo.agregarArista("A", "B", new WeightedEdge(4));
@@ -100,6 +107,7 @@ public class DirectedGraphAlgorithmsTest extends TestCase {
         assertEquals(List.of("A", "B", "C"), resultado.getPath("A", "C"));
     }
 
+    // Con un ciclo negativo no hay costo mínimo finito, así que se espera una excepción.
     public void testRechazaCicloNegativo() {
         DirectedGraph<String, WeightedEdge> grafo = grafo("A", "B");
         grafo.agregarArista("A", "B", new WeightedEdge(1));
@@ -112,6 +120,7 @@ public class DirectedGraphAlgorithmsTest extends TestCase {
         }
     }
 
+    // NaN e infinito no se aceptan como pesos de entrada en Floyd.
     public void testRechazaPesosInvalidos() {
         for (double peso : new double[]{Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY}) {
             DirectedGraph<String, WeightedEdge> grafo = grafo("A", "B");
@@ -125,6 +134,7 @@ public class DirectedGraphAlgorithmsTest extends TestCase {
         }
     }
 
+    // Verifica que el centro se calcule por costos de llegada: C recibe caminos desde todos.
     public void testCentroUsaExcentricidadDeEntrada() {
         DirectedGraph<String, WeightedEdge> grafo = grafo("A", "B", "C");
         grafo.agregarArista("A", "B", new WeightedEdge(2));
@@ -135,6 +145,8 @@ public class DirectedGraphAlgorithmsTest extends TestCase {
                 algoritmos.obtenerExcentricidad(grafo, grafo.construirComparable("A")), 0);
     }
 
+    // Reúne casos especiales de la consigna: vacío, desconectado, unitario y empate de centros.
+    // También comprueba que la excentricidad rechace un vértice inexistente.
     public void testCentroVacioDesconectadoUnitarioYEmpatado() {
         assertNull(algoritmos.obtenerCentroGrafo(grafo()));
         assertNull(algoritmos.obtenerCentroGrafo(grafo("A", "B")));

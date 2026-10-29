@@ -10,6 +10,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 
+// Pruebas de Prim, Kruskal y BFS no dirigido, correspondientes al tercer requisito del desafío.
 public class UndirectedGraphAlgorithmsTest extends TestCase {
 
     private final UndirectedGraphAlgorithms algoritmos = new UndirectedGraphAlgorithms();
@@ -55,6 +56,7 @@ public class UndirectedGraphAlgorithmsTest extends TestCase {
         return g;
     }
 
+    // No alcanza con obtener costo 37: también se exige conexión, V - 1 aristas y ningún ciclo.
     public void testKruskalGrafoClasicoCosto37() {
         IUndirectedGraph<String, WeightedEdge> arbol = algoritmos.kruskal(grafoClasico());
         assertEquals(9, arbol.cantidadDeVertices());
@@ -64,6 +66,7 @@ public class UndirectedGraphAlgorithmsTest extends TestCase {
         assertFalse(arbol.tieneCiclos());
     }
 
+    // Comprueba las mismas propiedades del árbol mínimo, esta vez construido con Prim.
     public void testPrimGrafoClasicoCosto37() {
         IUndirectedGraph<String, WeightedEdge> arbol = algoritmos.prim(grafoClasico(), criterio("A"));
         assertEquals(9, arbol.cantidadDeVertices());
@@ -73,6 +76,7 @@ public class UndirectedGraphAlgorithmsTest extends TestCase {
         assertFalse(arbol.tieneCiclos());
     }
 
+    // Cambiar el origen puede cambiar las aristas elegidas, pero no el costo mínimo esperado.
     public void testPrimDaElMismoCostoDesdeCualquierOrigen() {
         UndirectedGraph<String, WeightedEdge> g = grafoClasico();
         for (String origen : g.vertices()) {
@@ -80,10 +84,12 @@ public class UndirectedGraphAlgorithmsTest extends TestCase {
         }
     }
 
+    // Verifica la versión que elige el primer vértice como origen automáticamente.
     public void testPrimSinOrigen() {
         assertEquals(37.0, costo(algoritmos.prim(grafoClasico())), 0.0001);
     }
 
+    // Ambos algoritmos construyen otro grafo; acá se comprueba que no cambie el número de aristas original.
     public void testNoModificaElGrafoOriginal() {
         UndirectedGraph<String, WeightedEdge> g = grafoClasico();
         algoritmos.kruskal(g);
@@ -91,12 +97,14 @@ public class UndirectedGraphAlgorithmsTest extends TestCase {
         assertEquals(14, g.cantidadDeAristas());
     }
 
+    // En vacío, Kruskal devuelve un grafo vacío y Prim sin origen devuelve null.
     public void testGrafoVacio() {
         UndirectedGraph<String, WeightedEdge> g = grafo();
         assertEquals(0, algoritmos.kruskal(g).cantidadDeVertices());
         assertNull(algoritmos.prim(g));
     }
 
+    // El caso unitario debe conservar el vértice sin intentar agregar aristas.
     public void testUnSoloVertice() {
         UndirectedGraph<String, WeightedEdge> g = grafo("A");
         IUndirectedGraph<String, WeightedEdge> k = algoritmos.kruskal(g);
@@ -107,11 +115,13 @@ public class UndirectedGraphAlgorithmsTest extends TestCase {
         assertEquals(0, p.cantidadDeAristas());
     }
 
+    // La versión de Prim con origen devuelve un grafo vacío si ese origen no existe.
     public void testPrimOrigenInexistente() {
         IUndirectedGraph<String, WeightedEdge> arbol = algoritmos.prim(grafoClasico(), criterio("X"));
         assertEquals(0, arbol.cantidadDeVertices());
     }
 
+    // Con pesos iguales puede haber varios árboles válidos; se verifican costo y ausencia de ciclos.
     public void testPesosIguales() {
         UndirectedGraph<String, WeightedEdge> g = grafo("A", "B", "C", "D");
         arista(g, "A", "B", 1);
@@ -129,6 +139,7 @@ public class UndirectedGraphAlgorithmsTest extends TestCase {
         assertFalse(p.tieneCiclos());
     }
 
+    // Para el caso desconectado se esperan dos árboles y un aislado conservado en el resultado.
     public void testGrafoDesconectadoDevuelveBosque() {
         UndirectedGraph<String, WeightedEdge> g = grafo("A", "B", "C", "X", "Y", "Z", "SOLO");
         arista(g, "A", "B", 1);
@@ -149,6 +160,7 @@ public class UndirectedGraphAlgorithmsTest extends TestCase {
         assertFalse(p.tieneCiclos());
     }
 
+    // Compara los costos de ambos algoritmos cuando existen muchas conexiones posibles.
     public void testGrafoDensoPrimYKruskalCoinciden() {
         String[] nombres = {"A", "B", "C", "D", "E", "F"};
         UndirectedGraph<String, WeightedEdge> g = grafo(nombres);
@@ -165,6 +177,7 @@ public class UndirectedGraphAlgorithmsTest extends TestCase {
         assertEquals(costo(k), costo(p), 0.0001);
     }
 
+    // Verifica la arista mínima entre conjuntos y null cuando no hay conexión entre ellos.
     public void testSearchMinEdge() {
         UndirectedGraph<String, WeightedEdge> g = grafoClasico();
         Edge<String, WeightedEdge> e = algoritmos.searchMinEdge(g, Set.of("A"), Set.of("B", "H"));
@@ -174,6 +187,7 @@ public class UndirectedGraphAlgorithmsTest extends TestCase {
         assertNull(algoritmos.searchMinEdge(g, Set.of("A"), Set.of("E")));
     }
 
+    // El orden esperado muestra que BFS termina un nivel antes de visitar el siguiente.
     public void testBeaRecorreEnAmplitud() {
         UndirectedGraph<String, WeightedEdge> g = grafo("A", "B", "C", "D", "E");
         arista(g, "A", "B", 1);
@@ -185,6 +199,7 @@ public class UndirectedGraphAlgorithmsTest extends TestCase {
         assertEquals(Arrays.asList("A", "B", "C", "D", "E"), orden);
     }
 
+    // El recorrido no debe terminar al agotar la primera componente.
     public void testBeaVisitaTodasLasComponentes() {
         UndirectedGraph<String, WeightedEdge> g = grafo("A", "B", "X", "Y");
         arista(g, "A", "B", 1);
@@ -192,5 +207,32 @@ public class UndirectedGraphAlgorithmsTest extends TestCase {
         List<String> orden = new ArrayList<>();
         algoritmos.bea(g, orden::add);
         assertEquals(Arrays.asList("A", "B", "X", "Y"), orden);
+    }
+
+    // En vacío, BFS termina sin llamar al consumer.
+    public void testBeaGrafoVacio() {
+        List<String> orden = new ArrayList<>();
+        algoritmos.bea(grafo(), orden::add);
+        assertTrue(orden.isEmpty());
+    }
+
+    // El caso unitario debe visitar al vértice aunque no tenga conexiones.
+    public void testBeaUnSoloVertice() {
+        List<String> orden = new ArrayList<>();
+        algoritmos.bea(grafo("A"), orden::add);
+        assertEquals(List.of("A"), orden);
+    }
+
+    // El ciclo no repite visitas y los aislados también se incluyen al recorrer todo el grafo.
+    public void testBeaConCicloYAislados() {
+        UndirectedGraph<String, WeightedEdge> g = grafo("SOLO", "A", "B", "C", "OTRO");
+        arista(g, "A", "B", 1);
+        arista(g, "B", "C", 1);
+        arista(g, "C", "A", 1);
+        List<String> orden = new ArrayList<>();
+        algoritmos.bea(g, orden::add);
+        assertEquals(List.of("SOLO", "A", "B", "C", "OTRO"), orden);
+        assertEquals(5, g.cantidadDeVertices());
+        assertEquals(3, g.cantidadDeAristas());
     }
 }

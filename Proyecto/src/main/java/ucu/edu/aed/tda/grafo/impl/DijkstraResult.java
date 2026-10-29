@@ -10,18 +10,22 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+// Guarda los costos y predecesores calculados desde un único origen.
 public final class DijkstraResult<V> implements IDijkstraResult<V> {
 
     private final V origen;
     private final Map<V, Double> costos;
     private final Map<V, V> predecesores;
 
+    // Copia los mapas para que cambios externos no alteren el resultado.
     DijkstraResult(V origen, Map<V, Double> costos, Map<V, V> predecesores) {
         this.origen = origen;
         this.costos = Collections.unmodifiableMap(new LinkedHashMap<>(costos));
         this.predecesores = Collections.unmodifiableMap(new LinkedHashMap<>(predecesores));
     }
 
+    // Devuelve el costo en O(1) esperado, o infinito si el vértice es inalcanzable.
+    // Un vértice que no forma parte del resultado es un error.
     @Override
     public double getCost(V otherVertex) {
         Double costo = costos.get(otherVertex);
@@ -31,6 +35,7 @@ public final class DijkstraResult<V> implements IDijkstraResult<V> {
         return costo;
     }
 
+    // Valida el destino y devuelve el camino desde el origen, o una lista vacía.
     @Override
     public List<V> getPath(V otherVertex) {
         getCost(otherVertex);
@@ -42,10 +47,9 @@ public final class DijkstraResult<V> implements IDijkstraResult<V> {
         return predecesores;
     }
 
-    /**
-     * Sigue los predecesores desde el destino hasta el origen e invierte el orden.
-     * Devuelve una lista vacia si no hay camino y rechaza ciclos en el vector.
-     */
+    // Retrocede desde el destino siguiendo los predecesores.
+    // Devuelve una lista vacía si no llega al origen y rechaza cadenas con ciclos.
+    // Cuesta O(L) en tiempo y espacio, siendo L la cantidad de vértices de la cadena.
     public static <V> List<V> reconstruirCamino(V origen, V destino, Map<V, V> predecesores) {
         if (origen == null || destino == null || predecesores == null) {
             throw new IllegalArgumentException("Origen, destino y predecesores son obligatorios");
@@ -57,6 +61,7 @@ public final class DijkstraResult<V> implements IDijkstraResult<V> {
             if (!visitados.add(actual)) {
                 throw new IllegalArgumentException("El vector de predecesores contiene un ciclo");
             }
+            // Agregar al principio deja el camino en orden de origen a destino.
             camino.addFirst(actual);
             if (actual.equals(origen)) {
                 return List.copyOf(camino);

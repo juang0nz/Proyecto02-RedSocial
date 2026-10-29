@@ -7,110 +7,84 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 
-/**
- * Modela un grafo, donde los vértices son del tipo V, y las aristas guardan el dato D
- */
+// Define las operaciones comunes a los grafos.
+// Es la base del primer requisito del Desafío 1: vértices, aristas, adyacencias,
+// conexidad y ciclos. DirectedGraph y UndirectedGraph ponen en práctica estas operaciones.
+// V es el tipo de los vértices y D es el dato que guarda cada arista.
 public interface IGraph<V, D> {
-    /**
-     * Agrega un vértice, y retorna true si efectivamente lo agrega
-     */
+    // Agrega el vértice y devuelve true si lo pudo agregar.
     boolean agregarVertice(V vertex);
 
-    /**
-     * Operación "Bulk",  agrega muchos vértices en la misma llamada
-     */
+    // Intenta agregar cada vértice de la colección.
     default void agregarVertices(Collection<V> vertices) {
         vertices.forEach(this::agregarVertice);
     }
 
 
+    // Busca el vértice usando el criterio recibido.
     V buscarVertice(Comparable<V> criterio);
 
-    /**
-     * Agrega una arista al grafo, indicando con un booleano si la agregó
-     */
+    // Intenta conectar source con target guardando dato en la arista.
+    // Devuelve true si la agregó.
     boolean agregarArista(V source, V target, D dato);
 
-    /**
-     * Elimina una arista del grafo
-     */
+    // Elimina la arista entre los vértices indicados por los criterios.
     boolean eliminarArista(Comparable<V> source, Comparable<V> target);
 
-    /**
-     * remueve un vértice del grafo, retorna true si el vértice fue efectivamente removido
-     */
+    // Elimina el vértice buscado y devuelve true si lo pudo quitar.
     boolean removerVertice(Comparable<V> criteria);
 
-    /**
-     * Conjunto de vértices (preferible devolver vista inmodificable).
-     */
+    // Devuelve los vértices del grafo.
     Set<V> vertices();
 
-    /**
-     * Conjunto de aristas (preferible vista inmodificable).
-     */
+    // Devuelve las aristas del grafo.
     Set<Edge<V, D>> aristas();
 
-    /**
-     * ¿Existe el vértice v?
-     */
+    // Revisa los vértices hasta encontrar uno que coincida con el criterio.
+    // La coincidencia se reconoce cuando compareTo devuelve 0.
     default boolean existeVertice(Comparable<V> criterio) {
         return vertices().stream().anyMatch(x -> criterio.compareTo(x) == 0);
     }
 
-    /**
-     * ¿Existe la arista (u -> v) en un grafo dirigido o (u,v) en uno no dirigido?
-     */
+    // Indica si existe la conexión. En un grafo dirigido importa el sentido.
     boolean existeArista(Comparable<V> sourceCriteria, Comparable<V> targetCriteria);
 
-    /**
-     * Retorna una arista que tiene un origen y destino source y target respectivamente
-     */
+    // Busca una arista usando los criterios de origen y destino.
     Edge<V, D> obtenerArista(Comparable<V> sourceCriteria, Comparable<V> targetCriteria);
 
+    // Permite buscar la arista pasando los vértices directamente.
+    // Los convierte en criterios que comparan con equals y usa la otra versión.
     default Edge<V, D> obtenerArista(V sourceCriteria, V targetCriteria) {
         return obtenerArista(construirComparable(sourceCriteria), construirComparable(targetCriteria));
     }
 
-    /**
-     * Retorna todas las aristas que el vertex tiene como adyacentes.
-     * En caso de que sea un grafo no dirigido, el método "source()"
-     * referencia al vértice "verticeCriteria"
-     */
+    // Devuelve las aristas que salen del vértice buscado.
+    // En un grafo no dirigido, source() representa al vértice consultado.
     List<Edge<V, D>> adyacencias(Comparable<V> verticeCriteria);
 
-    /**
-     * Retorna la cantidad de vértices
-     */
+    // Cuenta los vértices del grafo.
     default int cantidadDeVertices() {
         return vertices().size();
     }
 
-    /**
-     * Retorna la cantidad de artists
-     */
+    // Cuenta las aristas del grafo.
     default int cantidadDeAristas() {
         return aristas().size();
     }
 
-    /**
-     * Retorna true si el grafo es conexo
-     */
+    // Indica si el grafo es conexo; el criterio depende del tipo de grafo.
     boolean esConexo();
 
-    /**
-     * vacía el grafo
-     */
+    // Quita todos los vértices y aristas.
     void vaciar();
 
 
-    /**
-     * retorna true si el grafo tiene ciclos
-     */
+    // Indica si hay algún ciclo en el grafo.
     boolean tieneCiclos();
 
 
-    /** método utilitario para construir un comparable de un vértice cualquier utilizando equals */
+    // Arma un criterio para buscar este vértice usando equals.
+    // Devuelve 0 si coincide y 1 si no: sirve para buscar, no para ordenar.
     default Comparable<V> construirComparable(V vertice) {
         return x -> x.equals(vertice) ? 0 : 1;
     }

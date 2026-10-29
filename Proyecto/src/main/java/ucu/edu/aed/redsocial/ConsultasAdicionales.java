@@ -4,17 +4,17 @@ import ucu.edu.aed.tda.grafo.IDirectedIGraph;
 import ucu.edu.aed.tda.grafo.model.edge.Edge;
 import java.util.*;
 
-/**
- * Cinco consultas estructurales adicionales sobre el grafo de seguimiento.
- * Convencion: A -> B significa que A sigue a B. No modifica el grafo.
- * V = vertices, E = aristas. Cada consulta construye adyacencias O(V+E).
- */
+// Resuelve cinco consultas de seguimiento sin modificar el grafo.
+// A -> B significa que A sigue a B. V son los vértices y E las aristas.
+// Cada consulta arma sus propios índices en O(V + E) para recorrerlos después.
 public final class ConsultasAdicionales {
     private ConsultasAdicionales() {}
 
+    // Guarda a quién sigue cada usuario y quiénes lo siguen, para consultar sin búsquedas lineales.
     private static final class Indice<V> {
         final Map<V, Set<V>> salientes = new LinkedHashMap<>();
         final Map<V, Set<V>> entrantes = new LinkedHashMap<>();
+        // Recorre una vez los vértices y las aristas para llenar los dos sentidos.
         Indice(IDirectedIGraph<V, ?> grafo) {
             Objects.requireNonNull(grafo, "grafo");
             for (V v : grafo.vertices()) {
@@ -26,11 +26,14 @@ public final class ConsultasAdicionales {
                 entrantes.get(e.target()).add(e.source());
             }
         }
+        // Rechaza un usuario que no forma parte del índice.
         void exigir(V v) {
             if (!salientes.containsKey(v)) {
                 throw new IllegalArgumentException("Usuario inexistente: " + v);
             }
         }
+        // BFS con límite de saltos. Puede saltarse un usuario o una arista sin borrarlos.
+        // Incluye el inicio, salvo que esté bloqueado. Costo O(V + E).
         Set<V> alcanzables(V inicio, V bloqueado, V aristaOrigen, V aristaDestino, int limite) {
             Set<V> visitados = new LinkedHashSet<>();
             if (Objects.equals(inicio, bloqueado)) return visitados;
@@ -42,12 +45,14 @@ public final class ConsultasAdicionales {
             while (!cola.isEmpty()) {
                 V actual = cola.remove();
                 int distancia = distancias.get(actual);
+                // El nivel límite se incluye, pero ya no se expande.
                 if (distancia >= limite) continue;
                 for (V vecino : salientes.get(actual)) {
                     if (Objects.equals(vecino, bloqueado)
                             || (Objects.equals(actual, aristaOrigen) && Objects.equals(vecino, aristaDestino))) {
                         continue;
                     }
+                    // Marcar al encolar evita repetir usuarios y conserva la distancia mínima.
                     if (visitados.add(vecino)) {
                         distancias.put(vecino, distancia + 1);
                         cola.add(vecino);
@@ -58,9 +63,8 @@ public final class ConsultasAdicionales {
         }
     }
 
-    /** 1. Cuentas distintas del origen alcanzables siguiendo hasta k relaciones.
-     * O(V+E) tiempo y espacio. Con k=0 devuelve conjunto vacio.
-     */
+    // Devuelve a quiénes llega el origen siguiendo hasta k conexiones, sin incluirse.
+    // Con k = 0 queda vacío; un k negativo es un error. Tiempo y espacio O(V + E).
     public static <V, D> Set<V> alcanzablesHastaK(IDirectedIGraph<V, D> grafo, V origen, int k) {
         Indice<V> i = new Indice<>(grafo);
         i.exigir(origen);
@@ -70,19 +74,19 @@ public final class ConsultasAdicionales {
         return Collections.unmodifiableSet(resultado);
     }
 
-    /** 2. Cuentas que siguen a ambos usuarios. O(V+E) tiempo y espacio. */
+    // Devuelve los usuarios que siguen a ambos. Tiempo y espacio O(V + E).
     public static <V, D> Set<V> seguidoresComunes(IDirectedIGraph<V, D> grafo, V a, V b) {
         Indice<V> i = new Indice<>(grafo);
         i.exigir(a);
         i.exigir(b);
         Set<V> resultado = new LinkedHashSet<>(i.entrantes.get(a));
+        // Partimos de los seguidores de a y dejamos solo los que también siguen a b.
         resultado.retainAll(i.entrantes.get(b));
         return Collections.unmodifiableSet(resultado);
     }
 
-    /** 3. Camino dirigido minimo en saltos sin atravesar la cuenta bloqueada.
-     * Devuelve lista vacia cuando no existe. O(V+E) tiempo y espacio.
-     */
+    // Devuelve un camino mínimo en saltos que no pase por el usuario bloqueado.
+    // Si no hay camino, devuelve lista vacía. Tiempo y espacio O(V + E).
     public static <V, D> List<V> caminoEvitando(IDirectedIGraph<V, D> grafo, V origen, V destino, V bloqueado) {
         Indice<V> i = new Indice<>(grafo);
         i.exigir(origen);
@@ -91,6 +95,7 @@ public final class ConsultasAdicionales {
         if (Objects.equals(origen, bloqueado) || Objects.equals(destino, bloqueado)) {
             return List.of();
         }
+        // padre guarda desde dónde se descubrió cada usuario para reconstruir la ruta.
         Map<V, V> padre = new HashMap<>();
         Set<V> vistos = new HashSet<>();
         Deque<V> cola = new ArrayDeque<>();
@@ -108,6 +113,7 @@ public final class ConsultasAdicionales {
         if (!vistos.contains(destino)) return List.of();
         LinkedList<V> camino = new LinkedList<>();
         V actual = destino;
+        // Retrocedemos desde el destino y agregamos al principio para dejar el orden correcto.
         while (actual != null) {
             camino.addFirst(actual);
             actual = padre.get(actual);
@@ -115,9 +121,9 @@ public final class ConsultasAdicionales {
         return Collections.unmodifiableList(camino);
     }
 
-    /** 4. Componentes de la subred formada SOLO por seguimientos mutuos.
-     * Incluye usuarios aislados como grupos unitarios. O(V+E) tiempo y espacio.
-     */
+    // Forma grupos conectados usando solamente seguimientos de ida y vuelta.
+    // No exige que todos se sigan entre sí. Los aislados forman grupos de uno.
+    // Tiempo y espacio O(V + E).
     public static <V, D> List<Set<V>> gruposDeSeguimientoMutuo(IDirectedIGraph<V, D> grafo) {
         Indice<V> i = new Indice<>(grafo);
         Set<V> vistos = new HashSet<>();
@@ -131,6 +137,7 @@ public final class ConsultasAdicionales {
                 V actual = cola.remove();
                 grupo.add(actual);
                 for (V siguiente : i.salientes.get(actual)) {
+                    // Solo cruzamos la conexión si también existe en sentido contrario.
                     if (i.salientes.get(siguiente).contains(actual) && vistos.add(siguiente)) {
                         cola.add(siguiente);
                     }
@@ -141,9 +148,8 @@ public final class ConsultasAdicionales {
         return Collections.unmodifiableList(grupos);
     }
 
-    /** 5. Cuentas que origen deja de poder alcanzar al quitar una arista A -> B.
-     * No altera el grafo. O(V+E) tiempo y espacio.
-     */
+    // Compara el alcance del origen con y sin la arista a -> b.
+    // Devuelve los usuarios que se perderían, sin borrar nada. Tiempo y espacio O(V + E).
     public static <V, D> Set<V> perdidaPorEliminarSeguimiento(
             IDirectedIGraph<V, D> grafo, V origen, V a, V b) {
         Indice<V> i = new Indice<>(grafo);
@@ -153,6 +159,7 @@ public final class ConsultasAdicionales {
         if (!i.salientes.get(a).contains(b)) {
             throw new IllegalArgumentException("La relacion a eliminar no existe");
         }
+        // Hacemos dos BFS: el segundo ignora únicamente la arista indicada.
         Set<V> antes = i.alcanzables(origen, null, null, null, Integer.MAX_VALUE);
         Set<V> despues = i.alcanzables(origen, null, a, b, Integer.MAX_VALUE);
         antes.removeAll(despues);

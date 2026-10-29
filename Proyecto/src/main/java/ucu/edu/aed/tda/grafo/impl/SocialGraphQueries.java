@@ -14,18 +14,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/**
- * Consultas sobre relaciones dirigidas: A -> B significa que A sigue a B.
- * No depende del modelo de usuario ni de los pesos de las aristas.
- */
+// Resuelve distancias y sugerencias sin depender de la clase Usuario ni de los pesos.
+// Cada arista A -> B indica que A sigue a B.
 public final class SocialGraphQueries {
     private SocialGraphQueries() {
     }
 
-    /**
-     * Cantidad minima de seguimientos entre origen y destino.
-     * Retorna -1 cuando no existe una ruta dirigida. O(V + E).
-     */
+    // Busca la menor cantidad de saltos desde source hasta target, respetando la dirección.
+    // Devuelve -1 si no hay camino. Con DirectedGraph cuesta O(V² + E) en el peor caso,
+    // porque cada consulta de adyacencias vuelve a buscar el vértice en O(V).
     public static <V, D> int gradosDeSeparacion(IDirectedIGraph<V, D> graph,
                                                   Comparable<V> source, Comparable<V> target) {
         V origen = graph.buscarVertice(source);
@@ -37,6 +34,7 @@ public final class SocialGraphQueries {
             return 0;
         }
         Deque<V> queue = new ArrayDeque<>();
+        // El mapa guarda la distancia y también sirve para saber si ya lo descubrimos.
         Map<V, Integer> distances = new HashMap<>();
         queue.addLast(origen);
         distances.put(origen, 0);
@@ -47,6 +45,7 @@ public final class SocialGraphQueries {
                 V neighbor = edge.target();
                 if (!distances.containsKey(neighbor)) {
                     if (neighbor.equals(destino)) {
+                        // BFS explora por niveles, así que la primera llegada usa menos saltos.
                         return nextDistance;
                     }
                     distances.put(neighbor, nextDistance);
@@ -57,12 +56,9 @@ public final class SocialGraphQueries {
         return -1;
     }
 
-    /**
-     * Sugiere seguidos de seguidos no seguidos directamente.
-     * Ordena por cantidad de conexiones compartidas descendente;
-     * los empates siguen el orden de insercion de vertices del grafo.
-     * O(V + E) en la exploracion local, mas O(S log S) al ordenar sugerencias.
-     */
+    // Sugiere a quienes siguen los seguidos del usuario, sin incluirlo ni repetir sus seguidos.
+    // Primero van los que aparecen a través de más seguidos; los empates usan el registro.
+    // Con DirectedGraph, el peor caso es O(V² + E + S log S), con S sugerencias.
     public static <V, D> List<V> sugerencias(IDirectedIGraph<V, D> graph,
                                                Comparable<V> userCriteria) {
         V usuario = graph.buscarVertice(userCriteria);
@@ -70,6 +66,7 @@ public final class SocialGraphQueries {
             throw new IllegalArgumentException("El usuario no pertenece al grafo");
         }
         Set<V> seguidos = graph.successors(graph.construirComparable(usuario));
+        // Cada candidato suma una vez por cada seguido que apunta a él.
         Map<V, Integer> comunes = new LinkedHashMap<>();
         for (V seguido : seguidos) {
             for (V candidato : graph.successors(graph.construirComparable(seguido))) {

@@ -15,10 +15,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+// Guarda un grafo dirigido con una lista de aristas salientes por vértice.
+// Con esta clase resolvemos las operaciones de IGraph e IDirectedIGraph del Desafío 1.
+// En los costos, V es la cantidad de vértices y E la de aristas.
 public class DirectedGraph<V, D> implements IDirectedIGraph<V, D> {
 
+    // LinkedHashMap mantiene el orden en que se agregaron los vértices.
     private final Map<V, List<Edge<V, D>>> adyacencias = new LinkedHashMap<>();
 
+    // Devuelve false si el vértice es nulo o ya estaba. Costo esperado O(1).
     @Override
     public boolean agregarVertice(V vertex) {
         if (vertex == null || adyacencias.containsKey(vertex)) {
@@ -28,6 +33,8 @@ public class DirectedGraph<V, D> implements IDirectedIGraph<V, D> {
         return true;
     }
 
+    // Busca por criterio, no por la clave del mapa. Por eso cuesta O(V).
+    // Devuelve null si ningún vértice coincide.
     @Override
     public V buscarVertice(Comparable<V> criterio) {
         for (V v : adyacencias.keySet()) {
@@ -38,6 +45,9 @@ public class DirectedGraph<V, D> implements IDirectedIGraph<V, D> {
         return null;
     }
 
+    // Agrega source -> target si ambos existen y esa conexión no estaba.
+    // A diferencia del grafo no dirigido, acá se permite una arista del vértice a sí mismo.
+    // Revisar duplicados cuesta O(grado de salida del origen).
     @Override
     public boolean agregarArista(V source, V target, D dato) {
         if (!adyacencias.containsKey(source) || !adyacencias.containsKey(target)) {
@@ -53,6 +63,7 @@ public class DirectedGraph<V, D> implements IDirectedIGraph<V, D> {
         return true;
     }
 
+    // Busca ambos extremos y devuelve si quitó la arista. Costo O(V + grado de salida).
     @Override
     public boolean eliminarArista(Comparable<V> source, Comparable<V> target) {
         V origen = buscarVertice(source);
@@ -63,6 +74,7 @@ public class DirectedGraph<V, D> implements IDirectedIGraph<V, D> {
         return adyacencias.get(origen).removeIf(e -> e.target().equals(destino));
     }
 
+    // Quita el vértice y también las aristas que llegan a él. Costo O(V + E).
     @Override
     public boolean removerVertice(Comparable<V> criteria) {
         V vertice = buscarVertice(criteria);
@@ -76,11 +88,14 @@ public class DirectedGraph<V, D> implements IDirectedIGraph<V, D> {
         return true;
     }
 
+    // Es una vista de las claves: no se puede modificar desde afuera,
+    // pero refleja los cambios que se hagan en el grafo.
     @Override
     public Set<V> vertices() {
         return Collections.unmodifiableSet(adyacencias.keySet());
     }
 
+    // Reúne las listas en un conjunto nuevo de solo lectura. Costo O(V + E).
     @Override
     public Set<Edge<V, D>> aristas() {
         Set<Edge<V, D>> todas = new LinkedHashSet<>();
@@ -95,6 +110,8 @@ public class DirectedGraph<V, D> implements IDirectedIGraph<V, D> {
         return obtenerArista(sourceCriteria, targetCriteria) != null;
     }
 
+    // Busca el origen y revisa sus salientes; devuelve null si no encuentra la arista.
+    // Costo O(V + grado de salida del origen).
     @Override
     public Edge<V, D> obtenerArista(Comparable<V> sourceCriteria, Comparable<V> targetCriteria) {
         V origen = buscarVertice(sourceCriteria);
@@ -109,6 +126,8 @@ public class DirectedGraph<V, D> implements IDirectedIGraph<V, D> {
         return null;
     }
 
+    // Busca el vértice en O(V) y devuelve sus salientes sin permitir cambios en la lista.
+    // Si no existe, devuelve una lista vacía.
     @Override
     public List<Edge<V, D>> adyacencias(Comparable<V> verticeCriteria) {
         V vertice = buscarVertice(verticeCriteria);
@@ -118,6 +137,8 @@ public class DirectedGraph<V, D> implements IDirectedIGraph<V, D> {
         return Collections.unmodifiableList(adyacencias.get(vertice));
     }
 
+    // Los sucesores son los destinos de las aristas salientes.
+    // Esta consulta de la consigna devuelve vecinos directos, no todos los alcanzables.
     @Override
     public Set<V> successors(Comparable<V> criteria) {
         Set<V> sucesores = new LinkedHashSet<>();
@@ -127,6 +148,9 @@ public class DirectedGraph<V, D> implements IDirectedIGraph<V, D> {
         return sucesores;
     }
 
+    // Como solo guardamos salientes, hay que revisar todo para encontrar las entrantes.
+    // Así resolvemos la consulta de predecesores sin guardar una segunda lista por vértice.
+    // Devuelve los orígenes que apuntan al vértice. Costo O(V + E).
     @Override
     public Set<V> predecessors(Comparable<V> criteria) {
         V vertice = buscarVertice(criteria);
@@ -144,12 +168,17 @@ public class DirectedGraph<V, D> implements IDirectedIGraph<V, D> {
         return predecesores;
     }
 
+    // Comprueba conexión débil: ignora el sentido de las aristas.
+    // Esta es la interpretación de conexidad implementada; no comprueba conexión fuerte.
+    // Devuelve true si alcanza a todos, y también si el grafo está vacío.
+    // Cuesta O(V * (V + E)), porque busca predecesores recorriendo todo en cada paso.
     @Override
     public boolean esConexo() {
         if (adyacencias.isEmpty()) {
             return true;
         }
         V inicio = adyacencias.keySet().iterator().next();
+        // La cola recorre por niveles y visitados evita volver a encolar un vértice.
         Set<V> visitados = new HashSet<>();
         Deque<V> pendientes = new ArrayDeque<>();
         pendientes.add(inicio);
@@ -157,6 +186,7 @@ public class DirectedGraph<V, D> implements IDirectedIGraph<V, D> {
         while (!pendientes.isEmpty()) {
             V actual = pendientes.poll();
             Comparable<V> criterio = construirComparable(actual);
+            // Juntamos los que salen y los que entran para ignorar la dirección.
             Set<V> vecinos = new HashSet<>(successors(criterio));
             vecinos.addAll(predecessors(criterio));
             for (V vecino : vecinos) {
@@ -173,9 +203,12 @@ public class DirectedGraph<V, D> implements IDirectedIGraph<V, D> {
         adyacencias.clear();
     }
 
+    // Busca ciclos dirigidos con DFS, también en componentes separadas. O(V + E).
+    // El grafo vacío y un vértice sin lazo dan false; un lazo sí cuenta como ciclo.
     @Override
     public boolean tieneCiclos() {
         Set<V> visitados = new HashSet<>();
+        // No es lo mismo haber visitado un nodo que seguir dentro de su rama.
         Set<V> enCamino = new HashSet<>();
         for (V vertice : adyacencias.keySet()) {
             if (tieneCiclosAux(vertice, visitados, enCamino)) {
@@ -185,8 +218,10 @@ public class DirectedGraph<V, D> implements IDirectedIGraph<V, D> {
         return false;
     }
 
+    // Devuelve true si desde este nodo se vuelve a uno de la rama actual.
     private boolean tieneCiclosAux(V nodo, Set<V> visitados, Set<V> enCamino) {
         if (enCamino.contains(nodo)) {
+            // Volver a un nodo que todavía no terminamos de explorar cierra un ciclo.
             return true;
         }
         if (visitados.contains(nodo)) {
@@ -199,6 +234,7 @@ public class DirectedGraph<V, D> implements IDirectedIGraph<V, D> {
                 return true;
             }
         }
+        // Al volver de la recursión, el nodo ya no pertenece al camino activo.
         enCamino.remove(nodo);
         return false;
     }

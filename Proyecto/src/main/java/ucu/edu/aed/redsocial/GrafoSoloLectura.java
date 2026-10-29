@@ -7,21 +7,14 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
-/**
- * Vista de solo lectura de un grafo dirigido.
- *
- * RedSocial la entrega para que los algoritmos de la biblioteca (BFS, Floyd, Warshall,
- * sugerencias, etc.) puedan recorrer el grafo de seguimiento sin poder modificarlo. Así toda
- * alta o baja de seguimientos pasa por RedSocial, que es la que valida las reglas del
- * dominio (por ejemplo, que nadie se siga a sí mismo).
- *
- * No copia nada: cada consulta se delega al grafo original, con su misma complejidad,
- * y los cambios posteriores en la red se ven en la vista.
- */
+// Deja consultar el grafo de seguimiento, pero rechaza las operaciones que lo modifican.
+// Así los cambios pasan por RedSocial y sus validaciones.
+// No hace una copia: las consultas usan el grafo original y tienen el mismo costo.
 public final class GrafoSoloLectura<V, D> implements IDirectedIGraph<V, D> {
 
     private final IDirectedIGraph<V, D> grafo;
 
+    // Guarda la referencia al grafo; por eso la vista refleja sus cambios posteriores.
     public GrafoSoloLectura(IDirectedIGraph<V, D> grafo) {
         this.grafo = Objects.requireNonNull(grafo);
     }
@@ -31,7 +24,7 @@ public final class GrafoSoloLectura<V, D> implements IDirectedIGraph<V, D> {
                 "El grafo de seguimiento es de solo lectura; modificalo a través de RedSocial");
     }
 
-    // ---- Operaciones de escritura: no permitidas ----
+    // Estas operaciones fallan en vez de modificar el grafo.
 
     @Override
     public boolean agregarVertice(V vertex) {
@@ -58,7 +51,7 @@ public final class GrafoSoloLectura<V, D> implements IDirectedIGraph<V, D> {
         throw soloLectura();
     }
 
-    // ---- Operaciones de lectura: se delegan ----
+    // Para leer, usamos los métodos del grafo original sin cambiar sus resultados.
 
     @Override
     public V buscarVertice(Comparable<V> criterio) {
